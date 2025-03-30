@@ -300,3 +300,254 @@ img {
     margin-right: 10px;
     font-style: italic;
 }
+
+/* 聊天视图容器 */
+.chat-view-plus-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+/* 聊天消息区域 */
+.chat-view-plus-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    background-color: var(--background-primary);
+}
+
+/* 输入区域容器 */
+.chat-view-plus-input-container {
+    display: flex;
+    align-items: flex-end;
+    padding: 0.5rem 1rem;
+    background-color: var(--background-secondary);
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+/* 输入框 */
+.chat-view-plus-input-field {
+    flex: 1;
+    min-height: 2.5rem;
+    max-height: 10rem;
+    padding: 0.5rem;
+    margin-right: 0.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--background-modifier-border);
+    background-color: var(--background-primary);
+    font-family: inherit;
+    resize: none;
+    outline: none;
+    transition: border-color 0.15s ease-in-out;
+}
+
+.chat-view-plus-input-field:focus {
+    border-color: var(--interactive-accent);
+}
+
+/* 发送按钮 */
+.chat-view-plus-send-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 4rem;
+    height: 2.5rem;
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.15s ease-in-out;
+}
+
+.chat-view-plus-send-button:hover {
+    background-color: var(--interactive-accent-hover);
+}
+
+/* 角色设置样式 */
+.chat-view-role-setting {
+    background-color: var(--background-secondary);
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    margin-bottom: 1rem;
+}
+
+/* 删除按钮样式 */
+.chat-view-delete-button {
+    color: var(--text-error) !important;
+}
+
+/* 聊天消息 */
+.chat-view-plus-message {
+    margin-bottom: 1rem;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* 淡入动画 */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 右上角预设选择器 */
+.chat-view-preset-selector {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 10;
+}
+
+/* 聊天气泡自定义样式 */
+.chat-view-bubble.custom-style {
+    background-color: var(--custom-bubble-bg-color, rgba(0, 0, 0, 0.075));
+    border-radius: var(--custom-bubble-border-radius, 16px);
+    border-width: var(--custom-bubble-border-width, 2px);
+    border-color: var(--custom-bubble-border-color, rgba(255, 255, 255, 0.15));
+    box-shadow: var(--custom-bubble-shadow, none);
+}
+
+/* 角色选择器 */
+.chat-view-role-selector {
+    margin-right: 0.5rem;
+}
+
+.chat-view-role-select {
+    width: 5rem;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    color: var(--text-normal);
+}
+
+/* 预设按钮 */
+.chat-view-preset-button {
+    background-color: transparent;
+    color: var(--text-muted);
+    border: none;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-view-preset-button:hover {
+    color: var(--text-normal);
+    background-color: rgba(var(--interactive-accent-rgb), 0.1);
+}
+
+/* 欢迎消息 */
+.chat-view-welcome {
+    text-align: center;
+    margin-top: 3rem;
+    color: var(--text-muted);
+}
+
+.chat-view-welcome h3 {
+    margin-bottom: 0.5rem;
+}
+
+.chat-view-welcome p {
+    opacity: 0.8;
+}
+
+/* 灵动岛样式 */
+.chat-view-dynamic-island {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--background-secondary);
+    border-radius: 16px;
+    margin: 8px;
+    padding: 8px 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.chat-view-dynamic-island:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.chat-view-dynamic-island-filename {
+    font-weight: 600;
+    flex-grow: 1;
+    margin-right: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 聊天控制区域 */
+.chat-view-chat-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 8px;
+}
+
+/* 聊天块选择下拉列表 */
+.chat-view-chatblock-select {
+    background-color: var(--background-modifier-form-field);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    color: var(--text-normal);
+    font-size: 0.9em;
+    padding: 2px 4px;
+    max-width: 180px;
+}
+
+.chat-view-chatblock-select:focus {
+    box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+    outline: none;
+}
+
+.chat-view-chatblock-select option {
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+}
+
+/* 新聊天块按钮 */
+.chat-view-new-chat-button {
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--text-accent);
+    padding: 2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-view-new-chat-button:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-accent-hover);
+}
+
+/* 菜单按钮 */
+.chat-view-dynamic-island-menu {
+    display: flex;
+    align-items: center;
+}
+
+.chat-view-preset-button {
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--text-muted);
+    padding: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-view-preset-button:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}

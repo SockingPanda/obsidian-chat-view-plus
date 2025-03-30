@@ -13,6 +13,9 @@ A plugin for Obsidian that enables elegant chat interfaces within Markdown files
 - **Timestamp Support**: Add time markers to record the conversation timeline
 - **Rich Annotation System**: Support for timestamped notes and regular annotations
 - **Intuitive Syntax**: Newly designed syntax structure that's easy to use
+- **Multiple Chat Blocks**: Support for managing multiple chat conversations within a single file
+- **Daily Notes Integration**: Seamless integration with Obsidian's Daily Notes functionality
+- **Dynamic Island UI**: Modern interface with chat block selection and file binding controls
 
 ## Usage
 
@@ -75,6 +78,18 @@ ___
 3. **Annotation Types**:
    - Timestamped notes: `[time] note content` - Centered notes with timestamps
    - Regular annotations: Text entered directly, automatically centered
+
+### Advanced Features
+
+1. **Multiple Chat Blocks**:
+   - You can have multiple chat conversations in a single file
+   - Switch between different chat blocks using the dropdown in the UI
+   - Create new chat blocks with the "+" button
+
+2. **File Binding Options**:
+   - Bind to Daily Notes: Automatically use your daily note for chat content
+   - Bind to Active File: Follow whatever file you're currently editing
+   - Bind to Specific File: Set a dedicated file for your chat content
 
 ## Acknowledgements
 
