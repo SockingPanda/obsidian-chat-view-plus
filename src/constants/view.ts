@@ -1,0 +1,1 @@
+export const CHAT_VIEW_TYPE = "chat-view-plus"; 
