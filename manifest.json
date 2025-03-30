@@ -1,0 +1,10 @@
+{
+  "id": "obsidian-chat-view-plus",
+  "name": "Chat View Plus",
+  "version": "1.0.0",
+  "minAppVersion": "1.1.0",
+  "description": "在 Markdown 文件中创建优雅的聊天界面，支持丰富的 Markdown 格式和布局选项。",
+  "author": "SockingPanda",
+  "isDesktopOnly": false,
+  "authorUrl": "https://github.com/SockingPanda"
+}
