@@ -40,6 +40,11 @@ export class ChatView extends ItemView {
         this.contentEl.empty();
         this.contentEl.addClass("chat-view-plus-container");
         
+        // 确保有默认选中的角色
+        if (!this.selectedRole && this.plugin.settings.roles.length > 0) {
+            this.selectedRole = this.plugin.settings.roles[0];
+        }
+        
         // 创建灵动岛式顶部文件显示
         this.createFileDisplay();
         
@@ -551,6 +556,11 @@ export class ChatView extends ItemView {
                     this.plugin.settings.roles = [...preset.roles];
                     await this.plugin.saveSettings();
                     
+                    // 如果预设有角色，确保选中第一个角色
+                    if (preset.roles.length > 0 && !this.selectedRole) {
+                        this.selectedRole = preset.roles[0];
+                    }
+                    
                     // 更新角色选择器
                     this.updateRoleSelector();
                     
@@ -662,8 +672,8 @@ export class ChatView extends ItemView {
                 // 设置默认选中项
                 if (role.name === this.selectedRole?.name) {
                     option.selected = true;
-                roleSelect.setAttribute('data-selected-color', role.color);
-            }
+                    roleSelect.setAttribute('data-selected-color', role.color);
+                }
         });
         
         // 添加临时角色选项（如果有）
@@ -695,6 +705,16 @@ export class ChatView extends ItemView {
             text: "➕ 自定义角色...",
             value: "custom"
         });
+
+        // 如果没有选中的角色，自动选中第一个角色（如果有）
+        if (!this.selectedRole && roles.length > 0) {
+            this.selectedRole = roles[0];
+            const firstOption = roleSelect.options[0];
+            if (firstOption) {
+                firstOption.selected = true;
+                roleSelect.setAttribute('data-selected-color', this.selectedRole.color);
+            }
+        }
         
         // 角色选择事件
         roleSelect.addEventListener("change", async (e) => {
@@ -1353,7 +1373,24 @@ export class ChatView extends ItemView {
      */
     async sendMessage() {
         const message = this.inputField.value.trim();
-        if (message === "" || !this.selectedRole) return;
+        if (message === "") return; // 允许没有选择角色但有消息内容
+        
+        // 如果没有选择角色，但有可用角色，自动选中第一个
+        if (!this.selectedRole && this.plugin.settings.roles.length > 0) {
+            this.selectedRole = this.plugin.settings.roles[0];
+            // 更新角色选择器显示
+            const roleSelect = this.roleSelector.querySelector(".chat-view-role-select") as HTMLSelectElement;
+            if (roleSelect && roleSelect.options.length > 0) {
+                roleSelect.selectedIndex = 0;
+                roleSelect.setAttribute('data-selected-color', this.selectedRole.color);
+            }
+        }
+        
+        // 如果仍然没有选择角色，无法发送
+        if (!this.selectedRole) {
+            new Notice("请先选择一个角色");
+            return;
+        }
         
         if (!this.targetFile) {
             // 如果没有绑定文件，显示提示并返回
@@ -1363,6 +1400,9 @@ export class ChatView extends ItemView {
         }
         
         try {
+            // 获取发送前的聊天块数量
+            const beforeCount = await this.plugin.fileService.getChatBlocksCount(this.targetFile);
+            
             // 将消息写入文件
             await this.plugin.fileService.appendMessageToFile(
                 this.targetFile,
@@ -1375,6 +1415,17 @@ export class ChatView extends ItemView {
             // 清空输入框并重置高度
             this.inputField.value = "";
             this.inputField.style.height = "auto";
+            
+            // 获取发送后的聊天块数量
+            const afterCount = await this.plugin.fileService.getChatBlocksCount(this.targetFile);
+            
+            // 如果聊天块数量增加了，说明创建了新的聊天块，更新下拉列表
+            if (afterCount > beforeCount) {
+                const chatBlockSelect = this.fileDisplay.querySelector(".chat-view-chatblock-select") as HTMLSelectElement;
+                if (chatBlockSelect) {
+                    await this.updateChatBlockSelect(chatBlockSelect);
+                }
+            }
             
             // 重新加载文件内容以显示新消息
             await this.loadFileContent();

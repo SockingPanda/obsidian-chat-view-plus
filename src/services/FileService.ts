@@ -352,6 +352,8 @@ export class FileService {
                 });
             }
             
+            let createdNewChatBlock = false;
+            
             if (chatBlocks.length > 0 && chatIndex < chatBlocks.length) {
                 // 更新现有聊天块
                 const targetBlock = chatBlocks[chatIndex];
@@ -397,10 +399,24 @@ export class FileService {
                 const messageTemplate = `@${position} ${roleName} [${messageTime}]\n${message}\n___\n\n`;
                 
                 content += messageTemplate + "```";
+                
+                // 标记已创建新聊天块
+                createdNewChatBlock = true;
             }
             
             // 保存文件
             await this.app.vault.modify(file, content);
+            
+            // 如果创建了新聊天块，更新当前聊天索引并保存设置
+            if (createdNewChatBlock) {
+                // 重新计算聊天块数量
+                const updatedChatBlocksCount = await this.getChatBlocksCount(file);
+                // 设置索引为最后一个聊天块
+                this.plugin.settings.currentChatIndex = updatedChatBlocksCount - 1;
+                // 保存设置
+                await this.plugin.saveSettings();
+            }
+            
             return true;
         } catch (error) {
             console.error("写入消息失败:", error);
