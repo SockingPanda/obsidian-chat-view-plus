@@ -3,6 +3,21 @@
 :root {
     --opacity: 0.6;
     --line-height: 1.6;
+    
+    /* 添加颜色变量 */
+    --chat-view-red: #F33;
+    --chat-view-orange: #F80;
+    --chat-view-yellow: #ED0;
+    --chat-view-green: #2B5;
+    --chat-view-blue: #08F;
+    --chat-view-purple: #B2C;
+    --chat-view-grey: #999;
+    --chat-view-brown: #A71;
+    --chat-view-indigo: #75F;
+    --chat-view-teal: #0AA;
+    --chat-view-pink: #F2A;
+    --chat-view-slate: #78A;
+    --chat-view-wood: #EE6a44;
 }
 
 div.chat-view-bubble-mode-default > h2.chat-view-header,
@@ -326,13 +341,29 @@ img {
     border-top: 1px solid var(--background-modifier-border);
 }
 
+/* 输入区域左侧列 */
+.chat-view-plus-input-left-column {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    margin-right: 0.5rem;
+}
+
+/* 角色与预设容器 */
+.chat-view-role-preset-container {
+    display: flex;
+    flex-direction: row;
+    margin-bottom: 0.25rem;
+    align-items: center;
+    gap: 8px;
+}
+
 /* 输入框 */
 .chat-view-plus-input-field {
     flex: 1;
     min-height: 2.5rem;
     max-height: 10rem;
     padding: 0.5rem;
-    margin-right: 0.5rem;
     border-radius: 0.5rem;
     border: 1px solid var(--background-modifier-border);
     background-color: var(--background-primary);
@@ -368,10 +399,107 @@ img {
 
 /* 角色设置样式 */
 .chat-view-role-setting {
+    margin-bottom: 8px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.chat-view-role-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
     background-color: var(--background-secondary);
-    border-radius: 0.5rem;
-    padding: 0.5rem 1rem;
-    margin-bottom: 1rem;
+    cursor: pointer;
+}
+
+.chat-view-role-header:hover {
+    background-color: var(--background-secondary-alt);
+}
+
+.chat-view-role-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.chat-view-role-name {
+    font-weight: bold;
+}
+
+.chat-view-role-position {
+    color: var(--text-muted);
+    font-size: 0.9em;
+}
+
+.chat-view-role-color-preview {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    margin-left: 8px;
+}
+
+/* 使用颜色类名而不是内联样式 */
+.chat-view-role-color-preview.chat-view-red { background-color: #F33; }
+.chat-view-role-color-preview.chat-view-orange { background-color: #F80; }
+.chat-view-role-color-preview.chat-view-yellow { background-color: #ED0; }
+.chat-view-role-color-preview.chat-view-green { background-color: #2B5; }
+.chat-view-role-color-preview.chat-view-blue { background-color: #08F; }
+.chat-view-role-color-preview.chat-view-purple { background-color: #B2C; }
+.chat-view-role-color-preview.chat-view-grey { background-color: #999; }
+.chat-view-role-color-preview.chat-view-brown { background-color: #A71; }
+.chat-view-role-color-preview.chat-view-indigo { background-color: #75F; }
+.chat-view-role-color-preview.chat-view-teal { background-color: #0AA; }
+.chat-view-role-color-preview.chat-view-pink { background-color: #F2A; }
+.chat-view-role-color-preview.chat-view-slate { background-color: #78A; }
+.chat-view-role-color-preview.chat-view-wood { background-color: #EE6a44; }
+
+.chat-view-role-indicator {
+    color: var(--text-muted);
+    font-size: 0.8em;
+    margin-left: 8px;
+    transition: transform 0.3s ease;
+}
+
+.chat-view-role-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.chat-view-role-delete {
+    background-color: var(--background-modifier-error);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.chat-view-role-delete:hover {
+    background-color: var(--background-modifier-error-hover);
+}
+
+/* 折叠/展开效果 */
+.chat-view-role-details {
+    padding: 8px 12px;
+    border-top: 1px solid var(--background-modifier-border);
+    background-color: var(--background-primary);
+    max-height: 180px; /* 足够高以容纳所有内容 */
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, padding 0.3s ease-in-out;
+    opacity: 1;
+}
+
+/* 折叠状态 */
+.chat-view-role-setting.is-collapsed .chat-view-role-details {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+    border-top: none;
 }
 
 /* 删除按钮样式 */
@@ -391,30 +519,282 @@ img {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* 右上角预设选择器 */
-.chat-view-preset-selector {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    z-index: 10;
-}
-
-/* 聊天气泡自定义样式 */
-.chat-view-bubble.custom-style {
-    background-color: var(--custom-bubble-bg-color, rgba(0, 0, 0, 0.075));
-    border-radius: var(--custom-bubble-border-radius, 16px);
-    border-width: var(--custom-bubble-border-width, 2px);
-    border-color: var(--custom-bubble-border-color, rgba(255, 255, 255, 0.15));
-    box-shadow: var(--custom-bubble-shadow, none);
-}
-
 /* 角色选择器 */
 .chat-view-role-selector {
-    margin-right: 0.5rem;
+    display: flex;
+    align-items: center;
+    margin-right: 4px;
 }
 
+/* 修改角色选择器样式 */
 .chat-view-role-select {
-    width: 5rem;
+    width: 8rem;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    color: var(--text-normal);
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url('data:image/svg+xml;charset=US-ASCII,<svg width="12" height="12" xmlns="http://www.w3.org/2000/svg"><path d="M4 1h4l-2 3z"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    padding-right: 1.5rem;
+    transition: all 0.2s ease;
+}
+
+/* 根据选中的选项设置边框颜色 */
+.chat-view-role-select[data-selected-color="red"] {
+    border-color: var(--chat-view-red);
+}
+.chat-view-role-select[data-selected-color="orange"] {
+    border-color: var(--chat-view-orange);
+}
+.chat-view-role-select[data-selected-color="yellow"] {
+    border-color: var(--chat-view-yellow);
+}
+.chat-view-role-select[data-selected-color="green"] {
+    border-color: var(--chat-view-green);
+}
+.chat-view-role-select[data-selected-color="blue"] {
+    border-color: var(--chat-view-blue);
+}
+.chat-view-role-select[data-selected-color="purple"] {
+    border-color: var(--chat-view-purple);
+}
+.chat-view-role-select[data-selected-color="grey"] {
+    border-color: var(--chat-view-grey);
+}
+.chat-view-role-select[data-selected-color="brown"] {
+    border-color: var(--chat-view-brown);
+}
+.chat-view-role-select[data-selected-color="indigo"] {
+    border-color: var(--chat-view-indigo);
+}
+.chat-view-role-select[data-selected-color="teal"] {
+    border-color: var(--chat-view-teal);
+}
+.chat-view-role-select[data-selected-color="pink"] {
+    border-color: var(--chat-view-pink);
+}
+.chat-view-role-select[data-selected-color="slate"] {
+    border-color: var(--chat-view-slate);
+}
+.chat-view-role-select[data-selected-color="wood"] {
+    border-color: var(--chat-view-wood);
+}
+
+/* 当选择临时角色时的平行四边形效果 */
+.chat-view-role-select.has-temp-role {
+    transform: skew(-10deg);
+}
+
+.chat-view-role-select.has-temp-role option {
+    transform: skew(10deg);
+}
+
+/* 角色选择器选项样式 */
+.chat-view-role-select option {
+    background-color: var(--background-primary);
+    padding: 4px 8px;
+    color: var(--text-normal) !important;
+    border: 1px solid transparent;
+    margin: 2px 0;
+}
+
+/* 选项边框颜色 */
+.chat-view-role-select option[data-color="red"] {
+    border-color: var(--chat-view-red);
+    border-width: 1px;
+    border-style: solid;
+}
+.chat-view-role-select option[data-color="orange"] {
+    border-color: var(--chat-view-orange);
+    border-width: 1px;
+    border-style: solid;
+}
+.chat-view-role-select option[data-color="yellow"] {
+    border-color: var(--chat-view-yellow);
+    border-width: 1px;
+    border-style: solid;
+}
+.chat-view-role-select option[data-color="green"] {
+    border-color: var(--chat-view-green);
+    border-width: 1px;
+    border-style: solid;
+}
+.chat-view-role-select option[data-color="blue"] {
+    border-color: var(--chat-view-blue);
+    border-width: 1px;
+    border-style: solid;
+}
+.chat-view-role-select option[data-color="purple"] {
+    border-color: var(--chat-view-purple);
+    border-width: 1px;
+    border-style: solid;
+}
+.chat-view-role-select option[data-color="grey"] {
+    border-color: var(--chat-view-grey);
+    border-width: 1px;
+    border-style: solid;
+}
+.chat-view-role-select option[data-color="brown"] {
+    border-color: var(--chat-view-brown);
+    border-width: 1px;
+    border-style: solid;
+}
+.chat-view-role-select option[data-color="indigo"] {
+    border-color: var(--chat-view-indigo);
+    border-width: 1px;
+    border-style: solid;
+}
+.chat-view-role-select option[data-color="teal"] {
+    border-color: var(--chat-view-teal);
+    border-width: 1px;
+    border-style: solid;
+}
+.chat-view-role-select option[data-color="pink"] {
+    border-color: var(--chat-view-pink);
+    border-width: 1px;
+    border-style: solid;
+}
+.chat-view-role-select option[data-color="slate"] {
+    border-color: var(--chat-view-slate);
+    border-width: 1px;
+    border-style: solid;
+}
+.chat-view-role-select option[data-color="wood"] {
+    border-color: var(--chat-view-wood);
+    border-width: 1px;
+    border-style: solid;
+}
+
+/* 自定义角色选项样式 */
+.chat-view-role-select option[value="custom"] {
+    color: var(--text-normal) !important;
+    font-style: normal;
+    transform: none;
+    border: none;
+}
+
+/* 临时角色选项样式 */
+.chat-view-role-select option.chat-view-temporary-role {
+    font-style: italic;
+    transform: skew(-10deg);
+    display: inline-block;
+    position: relative;
+    padding: 4px 8px;
+    border-width: 2px;
+    border-style: solid;
+}
+
+/* 临时角色选项背景色 */
+.chat-view-role-select option.chat-view-temporary-role[data-color="red"] {
+    background-color: rgba(255, 51, 51, 0.1);
+    border-color: var(--chat-view-red);
+}
+.chat-view-role-select option.chat-view-temporary-role[data-color="orange"] {
+    background-color: rgba(255, 136, 0, 0.1);
+    border-color: var(--chat-view-orange);
+}
+.chat-view-role-select option.chat-view-temporary-role[data-color="yellow"] {
+    background-color: rgba(238, 221, 0, 0.1);
+    border-color: var(--chat-view-yellow);
+}
+.chat-view-role-select option.chat-view-temporary-role[data-color="green"] {
+    background-color: rgba(34, 187, 85, 0.1);
+    border-color: var(--chat-view-green);
+}
+.chat-view-role-select option.chat-view-temporary-role[data-color="blue"] {
+    background-color: rgba(0, 136, 255, 0.1);
+    border-color: var(--chat-view-blue);
+}
+.chat-view-role-select option.chat-view-temporary-role[data-color="purple"] {
+    background-color: rgba(187, 34, 204, 0.1);
+    border-color: var(--chat-view-purple);
+}
+.chat-view-role-select option.chat-view-temporary-role[data-color="grey"] {
+    background-color: rgba(153, 153, 153, 0.1);
+    border-color: var(--chat-view-grey);
+}
+.chat-view-role-select option.chat-view-temporary-role[data-color="brown"] {
+    background-color: rgba(170, 119, 17, 0.1);
+    border-color: var(--chat-view-brown);
+}
+.chat-view-role-select option.chat-view-temporary-role[data-color="indigo"] {
+    background-color: rgba(119, 85, 255, 0.1);
+    border-color: var(--chat-view-indigo);
+}
+.chat-view-role-select option.chat-view-temporary-role[data-color="teal"] {
+    background-color: rgba(0, 170, 170, 0.1);
+    border-color: var(--chat-view-teal);
+}
+.chat-view-role-select option.chat-view-temporary-role[data-color="pink"] {
+    background-color: rgba(255, 34, 170, 0.1);
+    border-color: var(--chat-view-pink);
+}
+.chat-view-role-select option.chat-view-temporary-role[data-color="slate"] {
+    background-color: rgba(119, 136, 170, 0.1);
+    border-color: var(--chat-view-slate);
+}
+.chat-view-role-select option.chat-view-temporary-role[data-color="wood"] {
+    background-color: rgba(238, 106, 68, 0.1);
+    border-color: var(--chat-view-wood);
+}
+
+/* 角色操作按钮容器 */
+.chat-view-role-actions-container {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 4px;
+}
+
+/* 临时角色编辑按钮 */
+.chat-view-temp-role-edit,
+.chat-view-temp-role-delete {
+    background: transparent;
+    border: none;
+    padding: 2px 4px;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+}
+
+.chat-view-temp-role-edit:hover {
+    background-color: rgba(var(--interactive-accent-rgb), 0.1);
+}
+
+.chat-view-temp-role-delete:hover {
+    background-color: rgba(255, 0, 0, 0.1);
+}
+
+.chat-view-temp-role-edit:focus,
+.chat-view-temp-role-delete:focus {
+    box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
+    outline: none;
+}
+
+/* 角色选择下拉框在临时角色选中时的样式 */
+.chat-view-role-select:has(option[data-temp="true"]:checked) {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 1px rgba(var(--interactive-accent-rgb), 0.3);
+}
+
+/* 预设选择器容器 */
+.chat-view-preset-selector-container {
+    display: flex;
+    align-items: center;
+}
+
+/* 预设选择下拉框 */
+.chat-view-preset-select {
+    width: 8rem;
     padding: 0.25rem;
     border-radius: 0.25rem;
     background-color: var(--background-primary);
@@ -550,4 +930,196 @@ img {
 .chat-view-preset-button:hover {
     background-color: var(--background-modifier-hover);
     color: var(--text-normal);
+}
+
+/* 预设管理样式 */
+.chat-view-presets-container {
+    margin-top: 16px;
+    background-color: var(--background-primary);
+    border-radius: 8px;
+    padding: 8px;
+    border: 1px solid var(--background-modifier-border);
+}
+
+.chat-view-save-preset {
+    margin-top: 16px;
+    padding: 8px 12px;
+    background-color: var(--background-secondary);
+    border-radius: 6px;
+    border: 1px solid var(--background-modifier-border);
+}
+
+.chat-view-presets-list {
+    margin-top: 20px;
+}
+
+.chat-view-presets-list h4 {
+    margin-bottom: 8px;
+    padding-left: 12px;
+    font-size: 1em;
+    color: var(--text-muted);
+}
+
+.chat-view-preset-item {
+    margin-bottom: 4px;
+    border-radius: 4px;
+    background-color: var(--background-secondary);
+    transition: background-color 0.2s ease;
+}
+
+.chat-view-preset-item:hover {
+    background-color: var(--background-secondary-alt);
+}
+
+/* 当前预设信息 */
+.chat-view-current-preset {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    padding-left: 0.25rem;
+}
+
+/* 聊天气泡自定义样式 */
+.chat-view-bubble.custom-style {
+    background-color: var(--custom-bubble-bg-color, rgba(0, 0, 0, 0.075));
+    border-radius: var(--custom-bubble-border-radius, 16px);
+    border-width: var(--custom-bubble-border-width, 2px);
+    border-color: var(--custom-bubble-border-color, rgba(255, 255, 255, 0.15));
+    box-shadow: var(--custom-bubble-shadow, none);
+}
+
+/* 临时角色选项样式 */
+.chat-view-temporary-role {
+    font-style: italic;
+    color: var(--text-accent);
+}
+
+option.chat-view-temporary-role {
+    font-style: italic;
+    color: var(--text-accent);
+    background-color: rgba(var(--interactive-accent-rgb), 0.05);
+}
+
+/* 模态框样式 */
+.chat-view-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+.chat-view-modal-container {
+    background-color: var(--background-primary);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    width: 400px;
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 20px;
+    animation: slideIn 0.2s ease-in-out;
+}
+
+.chat-view-modal-title {
+    margin-top: 0;
+    margin-bottom: 16px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-normal);
+    text-align: center;
+}
+
+.chat-view-modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.chat-view-modal-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.chat-view-modal-input-group label {
+    font-weight: 500;
+    color: var(--text-normal);
+}
+
+.chat-view-modal-input-group input, 
+.chat-view-modal-input-group select {
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--background-modifier-border);
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+}
+
+.chat-view-modal-input-group input:focus, 
+.chat-view-modal-input-group select:focus {
+    border-color: var(--interactive-accent);
+    outline: none;
+}
+
+.chat-view-modal-checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.chat-view-modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.chat-view-modal-button {
+    padding: 8px 16px;
+    border-radius: 4px;
+    border: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.chat-view-modal-button-primary {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.chat-view-modal-button-primary:hover {
+    background-color: var(--interactive-accent-hover);
+}
+
+.chat-view-modal-button-secondary {
+    background-color: var(--background-secondary);
+    color: var(--text-normal);
+}
+
+.chat-view-modal-button-secondary:hover {
+    background-color: var(--background-secondary-alt);
+}
+
+/* 颜色预览 */
+.chat-view-color-preview {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+/* 模态框动画 */
+@keyframes slideIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
 }

@@ -53,11 +53,31 @@ export class ChatView extends ItemView {
             cls: "chat-view-plus-input-container"
         });
         
-        // 创建角色选择器
-        this.createRoleSelector();
+        // 创建输入区域的左侧包装器（包含角色选择器、预设选择器和输入框）
+        const inputLeftColumn = this.inputContainer.createDiv({
+            cls: "chat-view-plus-input-left-column"
+        });
+        
+        // 创建角色与预设容器（水平排列）
+        const rolePresetContainer = inputLeftColumn.createDiv({
+            cls: "chat-view-role-preset-container"
+        });
+        
+        // 创建角色选择器容器
+        this.roleSelector = rolePresetContainer.createDiv({
+            cls: "chat-view-role-selector"
+        });
+        
+        // 创建预设选择器容器
+        const presetSelectorContainer = rolePresetContainer.createDiv({
+            cls: "chat-view-preset-selector-container"
+        });
+        
+        // 创建预设选择下拉框
+        this.createPresetSelector(presetSelectorContainer);
         
         // 创建输入框
-        this.inputField = this.inputContainer.createEl("textarea", {
+        this.inputField = inputLeftColumn.createEl("textarea", {
             cls: "chat-view-plus-input-field",
             attr: {
                 placeholder: "在此输入消息..."
@@ -88,6 +108,9 @@ export class ChatView extends ItemView {
                 this.sendMessage();
             }
         });
+        
+        // 初始化角色选择器内容
+        this.updateRoleSelector();
         
         // 加载绑定文件
         await this.loadTargetFile();
@@ -282,39 +305,6 @@ export class ChatView extends ItemView {
      */
     private showMenu(event: MouseEvent): void {
         const menu = new Menu();
-
-        // 添加预设标题
-        menu.addItem(item => {
-            item.setTitle("角色预设").setDisabled(true);
-        });
-        
-        // 分隔线
-        menu.addSeparator();
-        
-        // 添加预设列表
-        if (this.plugin.settings.presets.length > 0) {
-            this.plugin.settings.presets.forEach(preset => {
-                menu.addItem(item => {
-                    item.setTitle(preset.name)
-                        .setChecked(this.plugin.settings.currentPreset === preset.name)
-                        .onClick(async () => {
-                            this.plugin.settings.currentPreset = preset.name;
-                            this.plugin.settings.roles = [...preset.roles];
-                            await this.plugin.saveSettings();
-                            this.createRoleSelector(); // 重新创建角色选择器
-                            new Notice(`已切换到预设: ${preset.name}`);
-                        });
-                });
-            });
-        } else {
-            menu.addItem(item => {
-                item.setTitle("暂无预设")
-                    .setDisabled(true);
-            });
-        }
-        
-        // 分隔线
-        menu.addSeparator();
         
         // 添加文件操作标题
         menu.addItem(item => {
@@ -508,22 +498,151 @@ export class ChatView extends ItemView {
     }
     
     /**
-     * 创建角色选择器
+     * 创建预设选择器
      */
-    private createRoleSelector(): void {
-        // 如果已经有角色选择器，先移除
-        if (this.roleSelector) {
-            this.roleSelector.remove();
-        }
+    private createPresetSelector(container: HTMLElement): void {
+        // 清空容器
+        container.empty();
         
-        // 创建新的角色选择器
-        this.roleSelector = this.inputContainer.createDiv({
-            cls: "chat-view-role-selector"
+        // 创建预设选择下拉列表
+        const presetSelect = container.createEl("select", {
+            cls: "chat-view-preset-select"
         });
         
-        // 默认选择第一个角色
-        if (this.plugin.settings.roles.length > 0) {
+        // 添加"无预设"选项
+        const noneOption = presetSelect.createEl("option", {
+            text: "无预设",
+            value: ""
+        });
+        
+        // 如果没有选中的预设，设置"无预设"为选中状态
+        if (!this.plugin.settings.currentPreset) {
+            noneOption.selected = true;
+        }
+        
+        // 添加预设选项
+        this.plugin.settings.presets.forEach(preset => {
+            const option = presetSelect.createEl("option", {
+                text: preset.name,
+                value: preset.name
+            });
+            
+            // 设置当前选中的预设
+            if (preset.name === this.plugin.settings.currentPreset) {
+                option.selected = true;
+            }
+        });
+        
+        // 监听预设选择变化
+        presetSelect.addEventListener("change", async () => {
+            const selectedPreset = presetSelect.value;
+            
+            // 保存当前选中的角色名称
+            const previousRoleName = this.selectedRole?.name || "";
+            const isTemporaryRole = this.isTemporaryRole(previousRoleName);
+            
+            // 如果选择了预设
+            if (selectedPreset) {
+                // 查找预设
+                const preset = this.plugin.settings.presets.find(p => p.name === selectedPreset);
+                if (preset) {
+                    // 应用预设
+                    this.plugin.settings.currentPreset = preset.name;
+                    this.plugin.settings.roles = [...preset.roles];
+                    await this.plugin.saveSettings();
+                    
+                    // 更新角色选择器
+                    this.updateRoleSelector();
+                    
+                    // 处理角色选择
+                    this.handleRoleSelectionAfterPresetChange(previousRoleName, isTemporaryRole);
+                    
+                    new Notice(`已切换到预设: ${preset.name}`);
+                }
+            } else {
+                // 用户选择了"无预设"
+                this.plugin.settings.currentPreset = "";
+                await this.plugin.saveSettings();
+                
+                // 更新角色选择器但保留当前角色
+                this.updateRoleSelector();
+                
+                // 处理角色选择
+                this.handleRoleSelectionAfterPresetChange(previousRoleName, isTemporaryRole);
+            }
+        });
+    }
+    
+    /**
+     * 检查是否为临时角色
+     */
+    private isTemporaryRole(roleName: string): boolean {
+        // 如果角色不在设置的角色列表中，则视为临时角色
+        return !this.plugin.settings.roles.some(r => r.name === roleName) && roleName !== "";
+    }
+    
+    /**
+     * 处理预设切换后的角色选择
+     */
+    private handleRoleSelectionAfterPresetChange(previousRoleName: string, isTemporaryRole: boolean): void {
+        const roleSelect = this.roleSelector.querySelector(".chat-view-role-select") as HTMLSelectElement;
+        if (!roleSelect) return;
+        
+        if (isTemporaryRole && this.selectedRole) {
+            // 如果之前选择的是临时角色，尝试在角色选择器中添加并选中它
+            // 检查是否已存在同名角色选项
+            const existingOption = Array.from(roleSelect.options).find(opt => opt.value === previousRoleName);
+            
+            if (!existingOption) {
+                // 在自定义角色选项之前添加临时角色选项
+                const customOption = Array.from(roleSelect.options).find(opt => opt.value === "custom");
+                const tempOption = document.createElement("option");
+                tempOption.value = previousRoleName;
+                tempOption.textContent = `${previousRoleName} (临时)`;
+                tempOption.className = "chat-view-temporary-role";
+                
+                if (customOption) {
+                    roleSelect.insertBefore(tempOption, customOption);
+                } else {
+                    roleSelect.appendChild(tempOption);
+                }
+                
+                // 选中新添加的临时角色选项
+                tempOption.selected = true;
+            } else {
+                // 选中已存在的角色选项
+                existingOption.selected = true;
+            }
+        } else {
+            // 尝试找到预设中与之前选中的角色名称相同的角色
+            const matchingOption = Array.from(roleSelect.options).find(opt => 
+                opt.value === previousRoleName && opt.value !== "custom"
+            );
+            
+            if (matchingOption) {
+                // 如果找到同名角色，选中它
+                matchingOption.selected = true;
+                this.selectedRole = this.plugin.settings.roles.find(r => r.name === previousRoleName) || this.plugin.settings.roles[0];
+            } else if (this.plugin.settings.roles.length > 0) {
+                // 如果没有找到同名角色，默认选择第一个
+                roleSelect.selectedIndex = 0;
             this.selectedRole = this.plugin.settings.roles[0];
+            }
+        }
+    }
+    
+    /**
+     * 更新角色选择器的内容
+     */
+    private updateRoleSelector(): void {
+        // 清空角色选择器
+        this.roleSelector.empty();
+        
+        // 获取当前角色列表
+        const roles = this.plugin.settings.roles;
+        
+        // 保存之前选中的临时角色列表（如果有）
+        const tempRoles: ChatRole[] = this.getTemporaryRoles();
             
             // 创建角色选择下拉框
             const roleSelect = this.roleSelector.createEl("select", {
@@ -531,27 +650,608 @@ export class ChatView extends ItemView {
             });
             
             // 添加角色选项
-            this.plugin.settings.roles.forEach(role => {
+        roles.forEach(role => {
                 const option = roleSelect.createEl("option", {
                     text: role.name,
-                    value: role.name
+                value: role.name,
+                attr: {
+                    "data-color": role.color
+                }
                 });
                 
                 // 设置默认选中项
                 if (role.name === this.selectedRole?.name) {
                     option.selected = true;
+                roleSelect.setAttribute('data-selected-color', role.color);
+            }
+        });
+        
+        // 添加临时角色选项（如果有）
+        tempRoles.forEach(tempRole => {
+            // 检查角色名称是否已存在于常规角色中
+            const isDuplicate = roles.some(r => r.name === tempRole.name);
+            
+            if (!isDuplicate) {
+                const option = roleSelect.createEl("option", {
+                    text: `${tempRole.name} (临时)`,
+                    value: tempRole.name,
+                    attr: {
+                        "data-color": tempRole.color
+                    }
+                });
+                option.classList.add("chat-view-temporary-role");
+                
+                // 如果这是当前选中的角色，设置为选中状态
+                if (tempRole.name === this.selectedRole?.name) {
+                    option.selected = true;
+                    roleSelect.setAttribute('data-selected-color', tempRole.color);
+                    roleSelect.classList.add('has-temp-role');
+                }
+            }
+        });
+        
+        // 添加自定义角色选项
+        const customOption = roleSelect.createEl("option", {
+            text: "➕ 自定义角色...",
+            value: "custom"
+        });
+        
+        // 角色选择事件
+        roleSelect.addEventListener("change", async (e) => {
+            const select = e.target as HTMLSelectElement;
+            const selectedValue = select.value;
+            
+            if (selectedValue === "custom") {
+                // 重置选择器到之前的选择
+                if (this.selectedRole) {
+                    select.value = this.selectedRole.name;
+                }
+                // 显示自定义角色模态框
+                await this.showCustomRoleModal();
+        } else {
+                // 更新选中的角色
+                const selectedRole = [...roles, ...tempRoles].find(r => r.name === selectedValue);
+                if (selectedRole) {
+                    this.selectedRole = selectedRole;
+                    select.setAttribute('data-selected-color', selectedRole.color);
+                    
+                    // 根据是否是临时角色添加或移除平行四边形效果
+                    const isTemp = tempRoles.some(r => r.name === selectedValue);
+                    if (isTemp) {
+                        select.classList.add('has-temp-role');
+                    } else {
+                        select.classList.remove('has-temp-role');
+                    }
+                }
+            }
+        });
+    }
+    
+    /**
+     * 获取当前的临时角色列表
+     */
+    private getTemporaryRoles(): ChatRole[] {
+        const tempRoles: ChatRole[] = [];
+        
+        // 从sessionStorage中获取所有临时角色
+        try {
+            for(let i = 0; i < sessionStorage.length; i++) {
+                const key = sessionStorage.key(i);
+                if (key && key.startsWith('chat-view-temp-role-')) {
+                    const roleName = key.replace('chat-view-temp-role-', '');
+                    const storedRole = this.getStoredTemporaryRole(roleName);
+                    if (storedRole && !tempRoles.some(r => r.name === roleName)) {
+                        tempRoles.push(storedRole);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("获取临时角色时出错:", e);
+        }
+        
+        // 找到角色选择器中的所有临时角色选项
+        const roleSelect = this.roleSelector.querySelector(".chat-view-role-select") as HTMLSelectElement;
+        if (roleSelect) {
+            const tempOptions = Array.from(roleSelect.options).filter(opt => 
+                opt.classList.contains("chat-view-temporary-role") || 
+                opt.getAttribute("data-temp") === "true"
+            );
+            
+            // 添加所有临时角色选项对应的角色对象
+            tempOptions.forEach(opt => {
+                const roleName = opt.value;
+                // 确保没有重复添加
+                if (!tempRoles.some(r => r.name === roleName)) {
+                    // 尝试从会话存储中查找角色定义
+                    const storedRole = this.getStoredTemporaryRole(roleName);
+                    if (storedRole) {
+                        tempRoles.push(storedRole);
+                    }
                 }
             });
+        }
+        
+        // 如果当前选中的是临时角色，确保添加到列表
+        if (this.selectedRole && this.isTemporaryRole(this.selectedRole.name)) {
+            const exists = tempRoles.some(r => r.name === this.selectedRole?.name);
+            if (!exists) {
+                tempRoles.push(this.selectedRole);
+                // 确保存储到sessionStorage
+                this.storeTemporaryRole(this.selectedRole);
+            }
+        }
+        
+        return tempRoles;
+    }
+    
+    /**
+     * 获取存储的临时角色
+     */
+    private getStoredTemporaryRole(name: string): ChatRole | null {
+        // 获取会话存储中的临时角色
+        const sessionKey = `chat-view-temp-role-${name}`;
+        const storedData = sessionStorage.getItem(sessionKey);
+        
+        if (storedData) {
+            try {
+                return JSON.parse(storedData) as ChatRole;
+            } catch (e) {
+                console.error("解析临时角色数据失败:", e);
+            }
+        }
+        
+        // 如果当前选中角色名称匹配且是临时角色
+        if (this.selectedRole && this.selectedRole.name === name && this.isTemporaryRole(name)) {
+            return this.selectedRole;
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 存储临时角色到会话存储
+     */
+    private storeTemporaryRole(role: ChatRole): void {
+        try {
+            const sessionKey = `chat-view-temp-role-${role.name}`;
+            sessionStorage.setItem(sessionKey, JSON.stringify(role));
+            console.log(`临时角色已存储: ${role.name}`);
+        } catch (e) {
+            console.error("存储临时角色失败:", e);
+            new Notice("存储临时角色失败，请检查浏览器设置");
+        }
+    }
+    
+    /**
+     * 删除临时角色
+     */
+    private async deleteTemporaryRole(roleName: string): Promise<void> {
+        try {
+            // 删除会话存储中的临时角色
+            const sessionKey = `chat-view-temp-role-${roleName}`;
+            sessionStorage.removeItem(sessionKey);
             
-            // 监听选择变化
-            roleSelect.addEventListener("change", () => {
-                const selectedName = roleSelect.value;
-                this.selectedRole = this.plugin.settings.roles.find(r => r.name === selectedName) || null;
-            });
-        } else {
-            // 如果没有角色，显示提示
-            this.roleSelector.setText("请先在设置中添加角色");
+            // 如果当前选中的是要删除的角色，重置选中状态
+            if (this.selectedRole?.name === roleName) {
             this.selectedRole = null;
+            }
+            
+            // 重新加载角色选择器
+            this.updateRoleSelector();
+            
+            // 选择第一个可用角色
+            const roleSelect = this.roleSelector.querySelector(".chat-view-role-select") as HTMLSelectElement;
+            if (roleSelect && roleSelect.options.length > 0) {
+                roleSelect.selectedIndex = 0;
+                const newSelectedValue = roleSelect.value;
+                if (newSelectedValue && newSelectedValue !== "custom") {
+                    const newTempFlag = roleSelect.options[0].getAttribute("data-temp") === "true";
+                    if (newTempFlag) {
+                        this.selectedRole = this.getStoredTemporaryRole(newSelectedValue);
+                    } else {
+                        this.selectedRole = this.plugin.settings.roles.find(r => r.name === newSelectedValue) || null;
+                    }
+                    this.updateRoleActionButtons(newTempFlag);
+                }
+            }
+            
+            new Notice(`已删除临时角色: ${roleName}`);
+        } catch (e) {
+            console.error("删除临时角色失败:", e);
+            new Notice("删除临时角色失败");
+        }
+    }
+    
+    /**
+     * 更新角色操作按钮
+     */
+    private updateRoleActionButtons(isTemp: boolean, container?: HTMLElement): void {
+        // 获取或创建按钮容器
+        const actionsContainer = container || this.roleSelector.querySelector(".chat-view-role-actions-container");
+        if (!actionsContainer) return;
+        
+        // 清空容器
+        actionsContainer.empty();
+        
+        if (isTemp && this.selectedRole) {
+            // 为临时角色添加编辑和删除按钮
+            try {
+                // 编辑按钮
+                const editButton = actionsContainer.createEl("button", {
+                    cls: "chat-view-temp-role-edit",
+                    attr: { "aria-label": "编辑临时角色", "title": "编辑角色" }
+                });
+                editButton.innerHTML = "✏️";
+                
+                // 删除按钮
+                const deleteButton = actionsContainer.createEl("button", {
+                    cls: "chat-view-temp-role-delete",
+                    attr: { "aria-label": "删除临时角色", "title": "删除角色" }
+                });
+                deleteButton.innerHTML = "❌";
+                
+                // 编辑按钮点击事件
+                editButton.addEventListener("click", async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    await this.showCustomRoleModal(this.selectedRole);
+                });
+                
+                // 删除按钮点击事件
+                deleteButton.addEventListener("click", async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (this.selectedRole) {
+                        await this.deleteTemporaryRole(this.selectedRole.name);
+                    }
+                });
+            } catch (e) {
+                console.error("创建临时角色按钮失败:", e);
+            }
+        }
+    }
+    
+    /**
+     * 显示自定义角色创建模态框
+     */
+    private async showCustomRoleModal(editRole?: ChatRole | null): Promise<void> {
+        // 创建模态框背景
+        const modalOverlay = document.createElement("div");
+        modalOverlay.className = "chat-view-modal-overlay";
+        document.body.appendChild(modalOverlay);
+        
+        // 创建模态框容器
+        const modalContainer = document.createElement("div");
+        modalContainer.className = "chat-view-modal-container";
+        modalOverlay.appendChild(modalContainer);
+        
+        // 创建模态框标题
+        const modalTitle = document.createElement("h3");
+        modalTitle.textContent = editRole ? "编辑临时角色" : "创建临时角色";
+        modalTitle.className = "chat-view-modal-title";
+        modalContainer.appendChild(modalTitle);
+        
+        // 创建表单
+        const form = document.createElement("div");
+        form.className = "chat-view-modal-form";
+        modalContainer.appendChild(form);
+        
+        // 名称输入
+        const nameContainer = document.createElement("div");
+        nameContainer.className = "chat-view-modal-input-group";
+        form.appendChild(nameContainer);
+        
+        const nameLabel = document.createElement("label");
+        nameLabel.textContent = "角色名称:";
+        nameContainer.appendChild(nameLabel);
+        
+        const nameInput = document.createElement("input");
+        nameInput.type = "text";
+        nameInput.placeholder = "输入角色名称";
+        nameInput.value = editRole ? editRole.name : "临时角色";
+        nameContainer.appendChild(nameInput);
+        
+        // 位置选择
+        const positionContainer = document.createElement("div");
+        positionContainer.className = "chat-view-modal-input-group";
+        form.appendChild(positionContainer);
+        
+        const positionLabel = document.createElement("label");
+        positionLabel.textContent = "位置:";
+        positionContainer.appendChild(positionLabel);
+        
+        const positionSelect = document.createElement("select");
+        
+        const positions = [
+            { value: "left", text: "左侧" },
+            { value: "right", text: "右侧" },
+            { value: "center", text: "居中" }
+        ];
+        
+        positions.forEach(pos => {
+            const option = document.createElement("option");
+            option.value = pos.value;
+            option.textContent = pos.text;
+            positionSelect.appendChild(option);
+        });
+        
+        // 默认选择右侧或已有角色位置
+        positionSelect.value = editRole ? editRole.position : "right";
+        positionContainer.appendChild(positionSelect);
+        
+        // 颜色选择
+        const colorContainer = document.createElement("div");
+        colorContainer.className = "chat-view-modal-input-group";
+        form.appendChild(colorContainer);
+        
+        const colorLabel = document.createElement("label");
+        colorLabel.textContent = "颜色:";
+        colorContainer.appendChild(colorLabel);
+        
+        const colorSelect = document.createElement("select");
+        
+        const colors = [
+            { value: "red", text: "红色" },
+            { value: "orange", text: "橙色" },
+            { value: "yellow", text: "黄色" },
+            { value: "green", text: "绿色" },
+            { value: "blue", text: "蓝色" },
+            { value: "purple", text: "紫色" },
+            { value: "grey", text: "灰色" },
+            { value: "brown", text: "棕色" },
+            { value: "indigo", text: "靛蓝" },
+            { value: "teal", text: "青色" },
+            { value: "pink", text: "粉色" },
+            { value: "slate", text: "石板色" },
+            { value: "wood", text: "木色" }
+        ];
+        
+        colors.forEach(color => {
+            const option = document.createElement("option");
+            option.value = color.value;
+            option.textContent = color.text;
+            colorSelect.appendChild(option);
+            
+            // 添加颜色预览
+            const colorPreview = document.createElement("span");
+            colorPreview.className = `chat-view-color-preview chat-view-${color.value}`;
+            option.prepend(colorPreview);
+        });
+        
+        // 默认选择蓝色或已有角色颜色
+        colorSelect.value = editRole ? editRole.color : "blue";
+        colorContainer.appendChild(colorSelect);
+        
+        // 保存设置选项
+        const saveOptionContainer = document.createElement("div");
+        saveOptionContainer.className = "chat-view-modal-checkbox-group";
+        form.appendChild(saveOptionContainer);
+        
+        const saveCheckbox = document.createElement("input");
+        saveCheckbox.type = "checkbox";
+        saveCheckbox.id = "save-custom-role";
+        saveOptionContainer.appendChild(saveCheckbox);
+        
+        const saveLabel = document.createElement("label");
+        saveLabel.htmlFor = "save-custom-role";
+        saveLabel.textContent = "同时保存此角色到设置";
+        saveOptionContainer.appendChild(saveLabel);
+        
+        // 按钮区域
+        const buttonContainer = document.createElement("div");
+        buttonContainer.className = "chat-view-modal-buttons";
+        modalContainer.appendChild(buttonContainer);
+        
+        // 取消按钮
+        const cancelButton = document.createElement("button");
+        cancelButton.textContent = "取消";
+        cancelButton.className = "chat-view-modal-button chat-view-modal-button-secondary";
+        buttonContainer.appendChild(cancelButton);
+        
+        // 创建/保存按钮
+        const createButton = document.createElement("button");
+        createButton.textContent = editRole ? "保存" : "创建";
+        createButton.className = "chat-view-modal-button chat-view-modal-button-primary";
+        buttonContainer.appendChild(createButton);
+        
+        // 取消按钮点击事件
+        cancelButton.addEventListener("click", () => {
+            modalOverlay.remove();
+        });
+        
+        // 创建/保存按钮点击事件
+        createButton.addEventListener("click", async () => {
+            const roleName = nameInput.value.trim() || "临时角色";
+            const position = positionSelect.value as 'left' | 'right' | 'center';
+            const color = colorSelect.value;
+            const saveToSettings = saveCheckbox.checked;
+            
+            // 检查角色名是否重复
+            const isDuplicate = this.plugin.settings.roles.some(r => 
+                r.name === roleName && (!editRole || r.name !== editRole.name)
+            );
+            
+            if (isDuplicate) {
+                new Notice("角色名不能重复");
+                return;
+            }
+            
+            // 创建新角色或更新现有角色
+            const newRole: ChatRole = {
+                name: roleName,
+                position: position,
+                color: color
+            };
+            
+            // 如果是编辑模式且名称变了，需要删除旧的会话存储数据
+            if (editRole) {
+                const oldSessionKey = `chat-view-temp-role-${editRole.name}`;
+                sessionStorage.removeItem(oldSessionKey);
+            }
+            
+            if (saveToSettings) {
+                // 检查是否已存在同名角色
+                const existingIndex = this.plugin.settings.roles.findIndex(r => r.name === roleName);
+                
+                if (existingIndex >= 0) {
+                    // 更新已有角色
+                    this.plugin.settings.roles[existingIndex] = newRole;
+                    new Notice(`已更新角色: ${roleName}`);
+                } else {
+                    // 添加新角色
+                    this.plugin.settings.roles.push(newRole);
+                    new Notice(`已添加角色: ${roleName}`);
+                }
+                
+                await this.plugin.saveSettings();
+                
+                // 如果之前是临时角色，删除会话存储中的数据
+                if (editRole) {
+                    const sessionKey = `chat-view-temp-role-${editRole.name}`;
+                    sessionStorage.removeItem(sessionKey);
+                }
+                
+                // 设置为当前选中角色
+                this.selectedRole = newRole;
+                
+                // 更新角色选择器
+                this.updateRoleSelector();
+                
+                // 选中新添加的角色
+                const roleSelect = this.roleSelector.querySelector(".chat-view-role-select") as HTMLSelectElement;
+                if (roleSelect) {
+                    const option = Array.from(roleSelect.options).find(opt => opt.value === roleName);
+                    if (option) {
+                        option.selected = true;
+                        this.updateRoleActionButtons(false);
+                    }
+                }
+            } else {
+                // 临时角色，存储到会话存储中
+                this.storeTemporaryRole(newRole);
+                
+                // 设置为当前选中角色
+                this.selectedRole = newRole;
+                
+                // 更新角色选择器
+                this.updateRoleSelector();
+                
+                // 选中新添加的临时角色
+                const roleSelect = this.roleSelector.querySelector(".chat-view-role-select") as HTMLSelectElement;
+                if (roleSelect) {
+                    const option = Array.from(roleSelect.options).find(opt => 
+                        opt.value === roleName && opt.getAttribute("data-temp") === "true"
+                    );
+                    if (option) {
+                        option.selected = true;
+                        this.updateRoleActionButtons(true);
+                    }
+                }
+                
+                // 如果是编辑模式，添加角色属性到当前聊天块
+                if (editRole) {
+                    await this.addRoleAttributesToCurrentChat(newRole);
+                }
+            }
+            
+            // 关闭模态框
+            modalOverlay.remove();
+        });
+        
+        // 自动聚焦到名称输入框
+        setTimeout(() => nameInput.focus(), 50);
+        
+        // 点击背景关闭模态框
+        modalOverlay.addEventListener("click", (e) => {
+            if (e.target === modalOverlay) {
+                modalOverlay.remove();
+            }
+        });
+        
+        // ESC键关闭模态框
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                modalOverlay.remove();
+                document.removeEventListener("keydown", handleKeyDown);
+            }
+        };
+        
+        document.addEventListener("keydown", handleKeyDown);
+    }
+    
+    /**
+     * 添加角色属性到当前聊天块
+     */
+    private async addRoleAttributesToCurrentChat(role: ChatRole): Promise<void> {
+        if (!this.targetFile) return;
+        
+        try {
+            const content = await this.app.vault.read(this.targetFile);
+            const chatBlocks = content.match(/```chat(?:-md)?\n([\s\S]*?)```/g) || [];
+            
+            if (chatBlocks.length > 0) {
+                const currentIndex = this.plugin.settings.currentChatIndex;
+                if (currentIndex >= 0 && currentIndex < chatBlocks.length) {
+                    const currentBlock = chatBlocks[currentIndex];
+                    const blockMatch = currentBlock.match(/```chat(?:-md)?\n([\s\S]*?)```/);
+                    
+                    if (!blockMatch) return;
+                    const blockContent = blockMatch[1];
+                    
+                    // 检查是否已有颜色配置行
+                    const lines = blockContent.split("\n");
+                    const colorConfigIndex = lines.findIndex(line => /^\[.*\]$/.test(line.trim()));
+                    
+                    // 构建新的颜色配置
+                    let newColorConfig = `[${role.name}=${role.color}]`;
+                    
+                    if (colorConfigIndex >= 0) {
+                        // 如果已有配置行，在其中添加新角色
+                        const existingConfig = lines[colorConfigIndex].trim();
+                        const configContent = existingConfig.slice(1, -1); // 移除方括号
+                        const configs = configContent.split(",").map(c => c.trim());
+                        
+                        // 检查是否已包含该角色的配置
+                        const roleConfigIndex = configs.findIndex(c => c.startsWith(`${role.name}=`));
+                        if (roleConfigIndex >= 0) {
+                            configs[roleConfigIndex] = `${role.name}=${role.color}`;
+                        } else {
+                            configs.push(`${role.name}=${role.color}`);
+                        }
+                        
+                        newColorConfig = `[${configs.join(", ")}]`;
+                        lines[colorConfigIndex] = newColorConfig;
+                    } else {
+                        // 如果没有配置行，在开头添加
+                        lines.unshift(newColorConfig);
+                    }
+                    
+                    // 更新文件内容
+                    const newBlockContent = lines.join("\n");
+                    const newContent = content.replace(currentBlock, `\`\`\`chat-md\n${newBlockContent}\`\`\``);
+                    await this.app.vault.modify(this.targetFile, newContent);
+                    
+                    // 重新加载内容
+                    await this.loadFileContent();
+                }
+            }
+        } catch (error) {
+            console.error("添加角色属性到聊天块时出错:", error);
+            new Notice("添加角色属性失败");
+        }
+    }
+    
+    /**
+     * 更新预设信息显示
+     */
+    private updatePresetInfo(): void {
+        const presetInfo = this.contentEl.querySelector(".chat-view-current-preset");
+        if (presetInfo) {
+            if (this.plugin.settings.currentPreset) {
+                presetInfo.setText(`预设: ${this.plugin.settings.currentPreset}`);
+            } else {
+                presetInfo.setText("无预设");
+            }
         }
     }
     

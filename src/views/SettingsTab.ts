@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import ChatViewPlusPlugin from "../index";
 import { ChatViewPlusSettings, ChatRole } from "../models/settings";
 
@@ -159,12 +159,14 @@ export class ChatViewPlusSettingsTab extends PluginSettingTab {
         // 预设设置部分
         containerEl.createEl("h3", { text: "预设管理" });
         
+        const presetContainer = containerEl.createDiv({ cls: "chat-view-presets-container" });
+        
         // 当前选中预设
         if (this.plugin.settings.presets.length > 0) {
             const presetNames = this.plugin.settings.presets.map(p => p.name);
             
-            new Setting(containerEl)
-                .setName("当前预设")
+            new Setting(presetContainer)
+                .setName("默认预设")
                 .setDesc("选择要使用的角色预设")
                 .addDropdown(dropdown => dropdown
                     .addOptions({
@@ -189,8 +191,10 @@ export class ChatViewPlusSettingsTab extends PluginSettingTab {
                 );
         }
         
-        // 保存当前预设
-        new Setting(containerEl)
+        // 保存当前预设区域
+        const savePresetDiv = presetContainer.createDiv({ cls: "chat-view-save-preset" });
+        
+        new Setting(savePresetDiv)
             .setName("保存当前预设")
             .setDesc("将当前角色配置保存为新预设")
             .addText(text => text
@@ -211,12 +215,14 @@ export class ChatViewPlusSettingsTab extends PluginSettingTab {
                         if (existingIndex >= 0) {
                             // 更新已有预设
                             this.plugin.settings.presets[existingIndex].roles = [...this.plugin.settings.roles];
+                            new Notice(`已更新预设: ${presetName}`);
                         } else {
                             // 创建新预设
                             this.plugin.settings.presets.push({
                                 name: presetName,
                                 roles: [...this.plugin.settings.roles]
                             });
+                            new Notice(`已创建新预设: ${presetName}`);
                         }
                         
                         // 设置为当前预设
@@ -225,32 +231,42 @@ export class ChatViewPlusSettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                         textInput.value = "";
                         this.display(); // 重新加载视图
+                    } else {
+                        new Notice("请输入预设名称");
                     }
                 })
             );
             
         // 显示现有预设列表
-        this.plugin.settings.presets.forEach((preset, index) => {
-            new Setting(containerEl)
-                .setName(preset.name)
-                .setDesc(`包含 ${preset.roles.length} 个角色`)
-                .addButton(button => button
-                    .setButtonText("删除")
-                    .setClass("chat-view-delete-button")
-                    .onClick(async () => {
-                        // 删除预设
-                        this.plugin.settings.presets.splice(index, 1);
-                        
-                        // 如果删除的是当前预设，清空当前预设
-                        if (this.plugin.settings.currentPreset === preset.name) {
-                            this.plugin.settings.currentPreset = "";
-                        }
-                        
-                        await this.plugin.saveSettings();
-                        this.display(); // 重新加载视图
-                    })
-                );
-        });
+        if (this.plugin.settings.presets.length > 0) {
+            const presetsListDiv = presetContainer.createDiv({ cls: "chat-view-presets-list" });
+            presetsListDiv.createEl("h4", { text: "现有预设" });
+            
+            this.plugin.settings.presets.forEach((preset, index) => {
+                const presetItemDiv = presetsListDiv.createDiv({ cls: "chat-view-preset-item" });
+                
+                new Setting(presetItemDiv)
+                    .setName(preset.name)
+                    .setDesc(`包含 ${preset.roles.length} 个角色`)
+                    .addButton(button => button
+                        .setButtonText("删除")
+                        .setClass("chat-view-delete-button")
+                        .onClick(async () => {
+                            // 删除预设
+                            this.plugin.settings.presets.splice(index, 1);
+                            
+                            // 如果删除的是当前预设，清空当前预设
+                            if (this.plugin.settings.currentPreset === preset.name) {
+                                this.plugin.settings.currentPreset = "";
+                            }
+                            
+                            await this.plugin.saveSettings();
+                            this.display(); // 重新加载视图
+                            new Notice(`已删除预设: ${preset.name}`);
+                        })
+                    );
+            });
+        }
     }
     
     /**
@@ -259,19 +275,60 @@ export class ChatViewPlusSettingsTab extends PluginSettingTab {
     private createRoleSettingElement(containerEl: HTMLElement, role: ChatRole, index: number): void {
         const roleDiv = containerEl.createDiv({ cls: "chat-view-role-setting" });
         
-        roleDiv.createEl("h4", { text: `角色 #${index + 1}` });
+        // 创建角色标题行（始终可见，整行可点击）
+        const roleTitleRow = roleDiv.createDiv({ cls: "chat-view-role-header" });
         
-        new Setting(roleDiv)
+        // 角色名称和位置信息（左侧）
+        const roleInfo = roleTitleRow.createDiv({ cls: "chat-view-role-info" });
+        roleInfo.createEl("span", { 
+            text: `${role.name}`, 
+            cls: "chat-view-role-name"
+        });
+        
+        // 显示位置信息
+        const positionMap: Record<string, string> = { "left": "左侧", "right": "右侧", "center": "居中" };
+        roleInfo.createEl("span", { 
+            text: ` (${positionMap[role.position]})`, 
+            cls: "chat-view-role-position" 
+        });
+        
+        // 显示角色颜色预览
+        const colorPreview = roleInfo.createSpan({ cls: "chat-view-role-color-preview" });
+        colorPreview.classList.add(`chat-view-${role.color}`);
+        
+        // 添加下拉箭头指示
+        const indicator = roleInfo.createSpan({ cls: "chat-view-role-indicator" });
+        indicator.innerHTML = "▼";
+        
+        // 创建操作按钮容器（右侧）
+        const roleActions = roleTitleRow.createDiv({ cls: "chat-view-role-actions" });
+        
+        // 只保留删除按钮
+        const deleteBtn = roleActions.createEl("button", {
+            cls: "chat-view-role-delete",
+            text: "删除",
+            attr: { "aria-label": "删除角色" }
+        });
+        
+        // 创建详细设置容器（默认折叠）
+        const detailsContainer = roleDiv.createDiv({ cls: "chat-view-role-details" });
+        
+        // 角色名称设置
+        new Setting(detailsContainer)
             .setName("角色名称")
             .addText(text => text
                 .setValue(role.name)
                 .onChange(async (value) => {
                     role.name = value;
+                    // 更新标题中显示的名称
+                    const nameEl = roleInfo.querySelector(".chat-view-role-name");
+                    if (nameEl) nameEl.textContent = value;
                     await this.plugin.saveSettings();
                 })
             );
             
-        new Setting(roleDiv)
+        // 位置设置
+        new Setting(detailsContainer)
             .setName("位置")
             .addDropdown(dropdown => dropdown
                 .addOptions({
@@ -282,11 +339,15 @@ export class ChatViewPlusSettingsTab extends PluginSettingTab {
                 .setValue(role.position)
                 .onChange(async (value) => {
                     role.position = value as 'left' | 'right' | 'center';
+                    // 更新位置显示
+                    const posEl = roleInfo.querySelector(".chat-view-role-position");
+                    if (posEl) posEl.textContent = ` (${positionMap[value as string]})`;
                     await this.plugin.saveSettings();
                 })
             );
             
-        new Setting(roleDiv)
+        // 颜色设置
+        new Setting(detailsContainer)
             .setName("颜色")
             .addDropdown(dropdown => dropdown
                 .addOptions({
@@ -307,20 +368,40 @@ export class ChatViewPlusSettingsTab extends PluginSettingTab {
                 .setValue(role.color)
                 .onChange(async (value) => {
                     role.color = value;
+                    // 更新颜色预览
+                    colorPreview.className = "chat-view-role-color-preview";
+                    colorPreview.classList.add(`chat-view-${value}`);
                     await this.plugin.saveSettings();
                 })
             );
+        
+        // 整行点击事件 - 展开/折叠详情
+        roleTitleRow.addEventListener("click", (e) => {
+            // 如果点击的是删除按钮或其子元素，不触发展开/折叠
+            if (e.target && (e.target === deleteBtn || deleteBtn.contains(e.target as Node))) {
+                return;
+            }
             
-        new Setting(roleDiv)
-            .setName("操作")
-            .addButton(button => button
-                .setButtonText("删除角色")
-                .setClass("chat-view-delete-button")
-                .onClick(async () => {
-                    this.plugin.settings.roles.splice(index, 1);
-                    await this.plugin.saveSettings();
-                    this.display(); // 重新加载视图
-                })
-            );
+            // 切换展开/折叠状态
+            roleDiv.classList.toggle("is-collapsed");
+            
+            // 更新指示器
+            if (roleDiv.classList.contains("is-collapsed")) {
+                indicator.innerHTML = "▼";
+            } else {
+                indicator.innerHTML = "▲";
+            }
+        });
+        
+        // 默认设置为折叠状态
+        roleDiv.classList.add("is-collapsed");
+        
+        // 删除按钮点击事件
+        deleteBtn.addEventListener("click", async (e) => {
+            e.stopPropagation(); // 阻止事件冒泡到roleTitleRow
+            this.plugin.settings.roles.splice(index, 1);
+            await this.plugin.saveSettings();
+            this.display(); // 重新加载视图
+        });
     }
 } 
