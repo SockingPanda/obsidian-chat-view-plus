@@ -93,6 +93,18 @@ ___
 
 本项目从 [Obsidian Chat View](https://github.com/adifyr/obsidian-chat-view) 插件获取了灵感，感谢原作者 Aditya Majethia 的创意。
 
+## 路线图
+
+查看我们的开发计划和即将推出的功能：
+- [中文路线图](docs/ROADMAP.md)
+- [English Roadmap](docs/ROADMAP_EN.md)
+
+## 更新日志
+
+查看每个版本的更新内容：
+- [中文更新日志](docs/CHANGELOG.md)
+- [English Changelog](docs/CHANGELOG_EN.md)
+
 ## 许可证
 
 本项目遵循 [MIT 许可证](LICENSE) 发布。 
