@@ -6,4 +6,8 @@ export const CONFIGS: Record<string, string[]> = {
 
 export const COLORS = [
 	"red", "orange", "yellow", "green", "blue", "purple", "grey", "brown", "indigo", "teal", "pink", "slate", "wood"
-]; 
+];
+
+// 导出所有模式
+export * from './patterns';
+export * from './view'; 

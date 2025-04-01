@@ -334,7 +334,8 @@ export class FileService {
         roleName: string,
         position: 'left' | 'right' | 'center',
         message: string,
-        chatIndex: number = 0
+        chatIndex: number = 0,
+        timeString?: string
     ): Promise<boolean> {
         try {
             // 获取文件内容
@@ -354,12 +355,14 @@ export class FileService {
             
             let createdNewChatBlock = false;
             
+            // 使用提供的时间或者当前时间
+            const messageTime = timeString || window.moment().format("YYYY-MM-DD HH:mm:ss");
+            
             if (chatBlocks.length > 0 && chatIndex < chatBlocks.length) {
                 // 更新现有聊天块
                 const targetBlock = chatBlocks[chatIndex];
                 
                 // 准备消息内容
-                const messageTime = window.moment().format("HH:mm");
                 const messageTemplate = `@${position} ${roleName} [${messageTime}]\n${message}\n___\n\n`;
                 
                 // 更新单个聊天块
@@ -395,7 +398,6 @@ export class FileService {
                 content += `[${colorConfigs}]\n\n`;
                 
                 // 添加消息
-                const messageTime = window.moment().format("HH:mm");
                 const messageTemplate = `@${position} ${roleName} [${messageTime}]\n${message}\n___\n\n`;
                 
                 content += messageTemplate + "```";

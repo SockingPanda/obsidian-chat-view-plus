@@ -51,6 +51,25 @@ div.chat-view-bubble-mode-minimal > p.chat-view-message {
 
 sub.chat-view-subtext {
     opacity: var(--opacity);
+    display: block;
+    margin-top: 4px;
+    font-size: 0.85em;
+    text-align: right;
+    color: var(--text-muted);
+    font-weight: normal;
+    padding-right: 4px;
+}
+
+div.chat-view-align-right sub.chat-view-subtext {
+    text-align: right;
+}
+
+div.chat-view-align-left sub.chat-view-subtext {
+    text-align: right;
+}
+
+div.chat-view-align-center sub.chat-view-subtext {
+    text-align: center;
 }
 
 .chat-view-comment {
@@ -1122,4 +1141,445 @@ option.chat-view-temporary-role {
 @keyframes slideIn {
     from { transform: translateY(-20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
+}
+
+/* 确保Markdown内容正确渲染 */
+.chat-view-message-container.markdown-rendered {
+    width: 100%;
+    font-size: var(--font-text-size);
+    color: var(--text-normal);
+}
+
+/* 任务列表格式 */
+.chat-view-message-container.markdown-rendered .task-list-item {
+    margin-left: 0;
+    text-indent: 0;
+    padding-left: 24px;
+    position: relative;
+}
+
+.chat-view-message-container.markdown-rendered .task-list-item-checkbox {
+    position: absolute;
+    left: 0;
+    top: 4px;
+    margin: 0;
+}
+
+/* 确保图片正确显示 */
+.chat-view-message-container.markdown-rendered img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 4px;
+    margin: 4px 0;
+}
+
+/* 确保代码块正确显示 */
+.chat-view-message-container.markdown-rendered pre {
+    margin: 8px 0;
+    white-space: pre-wrap;
+}
+
+/* 确保列表正确显示 */
+.chat-view-message-container.markdown-rendered ul,
+.chat-view-message-container.markdown-rendered ol {
+    margin-top: 4px;
+    margin-bottom: 4px;
+    padding-left: 24px;
+}
+
+/* 针对Markdown渲染的额外样式 */
+.markdown-rendered .task-list-item {
+    margin-left: 0 !important;
+    text-indent: 0 !important;
+    padding-left: 24px !important;
+    position: relative !important;
+    list-style-type: none !important;
+}
+
+.markdown-rendered .task-list-item-checkbox {
+    position: absolute !important;
+    left: 0 !important;
+    top: 4px !important;
+    margin: 0 !important;
+}
+
+.chat-view-comment.markdown-rendered ul,
+.chat-view-comment.markdown-rendered ol,
+.chat-view-centered-comment.markdown-rendered ul,
+.chat-view-centered-comment.markdown-rendered ol {
+    display: inline-block;
+    text-align: left;
+    margin: 0 auto;
+}
+
+.chat-view-comment.markdown-rendered p,
+.chat-view-centered-comment.markdown-rendered p {
+    margin: 0.5em 0;
+}
+
+.chat-view-message-container.markdown-rendered code {
+    font-family: var(--font-monospace);
+    white-space: pre-wrap;
+}
+
+.chat-view-message-container.markdown-rendered pre {
+    overflow-x: auto;
+    white-space: pre;
+    padding: 0.5em;
+}
+
+.chat-view-message-container.markdown-rendered pre code {
+    white-space: pre;
+}
+
+/* 保持图片正常尺寸，防止被压缩 */
+.chat-view-message-container.markdown-rendered img,
+.chat-view-comment.markdown-rendered img,
+.chat-view-centered-comment.markdown-rendered img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0.5em auto;
+}
+
+/* 嵌入元素样式 */
+
+/* 嵌入图片 */
+.chat-view-embedded-image {
+    max-width: 100%;
+    border-radius: 6px;
+    margin: 8px 0;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    display: block;
+    height: auto !important;
+    object-fit: contain;
+    background-color: var(--background-secondary);
+}
+
+/* 当图片加载完毕后的动画 */
+.chat-view-embedded-image.loaded {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* 图片加载错误时的样式 */
+.chat-view-embedded-image.error {
+    min-height: 100px;
+    background-color: var(--background-secondary-alt);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.chat-view-embedded-image.error::after {
+    content: "图片加载失败";
+    color: var(--text-error);
+    font-size: 14px;
+    position: absolute;
+}
+
+/* 嵌入笔记 */
+.chat-view-embedded-note {
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    margin: 8px 0;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    background-color: var(--background-secondary);
+}
+
+.chat-view-embedded-note-title {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    background-color: var(--background-secondary-alt);
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.chat-view-embedded-note-icon {
+    margin-right: 8px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-view-embedded-note-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-view-embedded-note-content {
+    padding: 10px 12px;
+    max-height: 300px;
+    overflow-y: auto;
+    font-size: 0.9em;
+}
+
+/* 链接样式 */
+.chat-view-clickable-link {
+    color: var(--text-accent);
+    cursor: pointer;
+    text-decoration: underline;
+    position: relative;
+}
+
+.chat-view-clickable-link:hover {
+    text-decoration: none;
+    background-color: rgba(var(--interactive-accent-rgb), 0.1);
+}
+
+.chat-view-clickable-link:after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background-color: var(--text-accent);
+    opacity: 0.5;
+}
+
+/* 链接图标 */
+.chat-view-clickable-link:hover:before {
+    content: '';
+    position: absolute;
+    right: -20px;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    background-color: var(--text-accent);
+    mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16"><path fill="none" d="M0 0h24v24H0z"/><path d="M10 6v2H5v11h11v-5h2v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6zm11-3v8h-2V6.413l-7.793 7.794-1.414-1.414L17.587 5H13V3h8z"/></svg>');
+    transform: translateY(-50%);
+    opacity: 0.8;
+}
+
+/* 内部链接样式增强 */
+.internal-link {
+    text-decoration: none;
+    background-color: rgba(var(--interactive-accent-rgb), 0.05);
+    border-radius: 3px;
+    padding: 0 3px;
+    transition: background-color 0.2s ease;
+}
+
+.internal-link:hover {
+    background-color: rgba(var(--interactive-accent-rgb), 0.1);
+}
+
+/* 内部嵌入样式增强 */
+.internal-embed {
+    position: relative;
+    margin: 1em 0;
+}
+
+/* 链接预览样式增强 */
+.hover-popover {
+    max-width: 500px !important;
+    max-height: 400px !important;
+    z-index: 999 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2) !important;
+    border: 1px solid var(--background-modifier-border) !important;
+    animation: fadeIn 0.2s ease-out !important;
+}
+
+.hover-popover .markdown-embed {
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.hover-popover .markdown-embed-content {
+    max-height: 380px !important;
+}
+
+.hover-popover .markdown-embed-link {
+    top: 8px !important;
+    right: 8px !important;
+    color: var(--text-accent) !important;
+    opacity: 0.6 !important;
+}
+
+.hover-popover .markdown-embed-link:hover {
+    opacity: 1 !important;
+}
+
+.hover-popover .markdown-rendered {
+    padding: 10px 15px !important;
+}
+
+/* 预览窗口的显示/隐藏动画 */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 增强Obsidian原生预览样式 */
+.chat-view-plus-container .internal-link {
+    color: var(--link-color);
+    text-decoration: none;
+    position: relative;
+    padding: 0 2px;
+    border-radius: 3px;
+    transition: background-color 0.2s ease;
+}
+
+.chat-view-plus-container .internal-link:hover {
+    background-color: var(--background-modifier-hover);
+    text-decoration: underline;
+}
+
+/* 确保原生的hover预览在聊天视图中正常显示 */
+.popover.hover-popover {
+    max-width: 500px;
+    max-height: 500px;
+    overflow: auto;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    animation: chat-view-fade-in 0.2s ease;
+    border: 1px solid var(--background-modifier-border);
+}
+
+.popover.hover-popover .markdown-embed {
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+
+.popover.hover-popover .markdown-embed-link {
+    display: none;
+}
+
+/* 添加淡入动画 */
+@keyframes chat-view-fade-in {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 自定义滚动条样式 */
+.popover.hover-popover::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.popover.hover-popover::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-bg);
+    border-radius: 3px;
+}
+
+.popover.hover-popover::-webkit-scrollbar-track {
+    background-color: var(--scrollbar-bg);
+}
+
+/* 确保预览内容可点击 */
+.popover.hover-popover .markdown-preview-view {
+    pointer-events: auto;
+}
+
+/* 修复文件导航箭头 */
+.popover.hover-popover .file-embed-title .nav-buttons-container {
+    opacity: 0.7;
+}
+
+.popover.hover-popover .file-embed-title .nav-buttons-container:hover {
+    opacity: 1;
+}
+
+/* 优化Obsidian原生链接预览样式 */
+.chat-view-plus-container .workspace-leaf .view-content .markdown-source-view .cm-underline,
+.chat-view-plus-container .workspace-leaf .view-content .markdown-preview-view .internal-link,
+.chat-view-plus-container .internal-link {
+    color: var(--link-color);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(var(--link-color-rgb), 0.4);
+    padding: 0 2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.chat-view-plus-container .internal-link:hover {
+    background-color: rgba(var(--link-color-rgb), 0.1);
+    color: var(--link-color-hover);
+    border-bottom-color: var(--link-color-hover);
+}
+
+/* 确保预览弹窗显示在前面 */
+.popover.hover-popover {
+    z-index: 99999 !important;
+    max-width: 550px !important;
+    max-height: 500px !important;
+    background-color: var(--background-primary) !important;
+    border: 1px solid var(--background-modifier-border) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2) !important;
+    padding: 0 !important;
+    animation: chat-popover-fade-in 0.15s ease-out !important;
+    overflow: hidden !important;
+}
+
+/* 预览弹窗动画 */
+@keyframes chat-popover-fade-in {
+    from { opacity: 0; transform: translateY(5px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* 确保预览内容可滚动 */
+.popover.hover-popover .markdown-embed-content {
+    max-height: 450px !important;
+    overflow-y: auto !important;
+}
+
+/* 隐藏预览弹窗中的嵌入链接图标 */
+.popover.hover-popover .markdown-embed-link,
+.popover.hover-popover .file-embed-link {
+    display: none !important;
+}
+
+/* 内部嵌入边框样式 */
+.popover.hover-popover .markdown-embed,
+.popover.hover-popover .file-embed {
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* 调整预览内容的内边距 */
+.popover.hover-popover .markdown-preview-view {
+    padding: 10px 15px !important;
+}
+
+/* 调整预览内容的标题样式 */
+.popover.hover-popover .markdown-preview-view h1,
+.popover.hover-popover .markdown-preview-view h2,
+.popover.hover-popover .markdown-preview-view h3 {
+    margin-top: 8px !important;
+    margin-bottom: 8px !important;
+}
+
+/* 调整预览内容中的代码块样式 */
+.popover.hover-popover .markdown-preview-view pre {
+    max-height: 200px !important;
+    overflow-y: auto !important;
+}
+
+/* 预览窗口的自定义滚动条 */
+.popover.hover-popover *::-webkit-scrollbar {
+    width: 6px !important;
+    height: 6px !important;
+}
+
+.popover.hover-popover *::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-bg) !important;
+    border-radius: 3px !important;
+}
+
+.popover.hover-popover *::-webkit-scrollbar-track {
+    background-color: var(--scrollbar-bg) !important;
 }

@@ -4,6 +4,7 @@ import { ChatBubbleOptions } from "../models/message";
 import { ChatBubbleRenderer } from "../renderers/chat-bubble";
 import { ChatRole } from "../models/settings";
 import { CHAT_VIEW_TYPE } from "../constants/view";
+import { MESSAGE_DIR_REGEX, MESSAGE_END_REGEX, parseHeaderAndTime } from "../constants";
 
 export class ChatView extends ItemView {
     private plugin: ChatViewPlusPlugin;
@@ -1369,33 +1370,27 @@ export class ChatView extends ItemView {
     }
     
     /**
-     * 发送消息到聊天窗口
+     * 发送消息
      */
     async sendMessage() {
+        // 获取输入框内容
         const message = this.inputField.value.trim();
-        if (message === "") return; // 允许没有选择角色但有消息内容
         
-        // 如果没有选择角色，但有可用角色，自动选中第一个
-        if (!this.selectedRole && this.plugin.settings.roles.length > 0) {
-            this.selectedRole = this.plugin.settings.roles[0];
-            // 更新角色选择器显示
-            const roleSelect = this.roleSelector.querySelector(".chat-view-role-select") as HTMLSelectElement;
-            if (roleSelect && roleSelect.options.length > 0) {
-                roleSelect.selectedIndex = 0;
-                roleSelect.setAttribute('data-selected-color', this.selectedRole.color);
-            }
-        }
-        
-        // 如果仍然没有选择角色，无法发送
+        // 如果没有选择角色，提示用户
         if (!this.selectedRole) {
             new Notice("请先选择一个角色");
             return;
         }
         
+        // 如果输入为空，不做任何操作
+        if (!message) {
+            return;
+        }
+        
+        // 如果没有绑定文件，提示用户
         if (!this.targetFile) {
-            // 如果没有绑定文件，显示提示并返回
-            new Notice("未能绑定目标文件，请在菜单中配置");
-            // 不需要重新加载，避免重复提示
+            this._hasShownUnboundNotice = true;
+            new Notice("请先绑定一个笔记文件");
             return;
         }
         
@@ -1403,13 +1398,17 @@ export class ChatView extends ItemView {
             // 获取发送前的聊天块数量
             const beforeCount = await this.plugin.fileService.getChatBlocksCount(this.targetFile);
             
+            // 添加时间格式
+            const now = window.moment().format("YYYY-MM-DD HH:mm:ss");
+            
             // 将消息写入文件
             await this.plugin.fileService.appendMessageToFile(
                 this.targetFile,
                 this.selectedRole.name,
                 this.selectedRole.position,
                 message,
-                this.plugin.settings.currentChatIndex
+                this.plugin.settings.currentChatIndex,
+                now  // 添加当前时间
             );
             
             // 清空输入框并重置高度
@@ -1533,7 +1532,7 @@ export class ChatView extends ItemView {
         const lines = content.split("\n");
          
         // 从内容中提取颜色配置
-        const colorConfigRegex = /^\[(.+?)]$/;
+        const colorConfigRegex = /^\[([^[\]]+?=[^[\]]+?(?:,[^[\]]+?=[^[\]]+?)*)]\s*$/;
         const colorConfigs = new Map<string, string>();
          
         for (const line of lines) {
@@ -1549,10 +1548,11 @@ export class ChatView extends ItemView {
             }
         }
          
+        // 设置格式配置，以确保正确处理嵌入和链接
+        const formatConfigs = new Map<string, string>();
+        formatConfigs.set("linkEmbeds", "true"); // 启用链接和嵌入处理
+        
         // 创建消息块
-        const messageDirectionRegex = /^@(left|right|center)\s+([^\[]+)(?:\s+\[(.+?)])?/;
-        const messageEndRegex = /^___+$/;
-         
         let inMessage = false;
         let direction = "";
         let sender = "";
@@ -1566,18 +1566,22 @@ export class ChatView extends ItemView {
             if (!line || line.match(colorConfigRegex)) continue;
              
             // 消息开始
-            const dirMatch = line.match(messageDirectionRegex);
+            const dirMatch = line.match(MESSAGE_DIR_REGEX);
             if (dirMatch && !inMessage) {
                 inMessage = true;
-                direction = dirMatch[1];
-                sender = dirMatch[2].trim();
-                time = dirMatch[3] || "";
+                direction = dirMatch[1].toLowerCase();
+                
+                // 使用parseHeaderAndTime函数解析头部和时间
+                const { header, time: parsedTime } = parseHeaderAndTime(dirMatch[2].trim());
+                sender = header;
+                time = parsedTime;
+                
                 messageContent = "";
                 continue;
             }
              
             // 消息结束
-            if (line.match(messageEndRegex) && inMessage) {
+            if (MESSAGE_END_REGEX.test(line) && inMessage) {
                 // 渲染消息
                 const options: ChatBubbleOptions = {
                     header: sender,
@@ -1587,11 +1591,12 @@ export class ChatView extends ItemView {
                     align: direction,
                     continued: false,
                     colorConfigs: colorConfigs,
-                    formatConfigs: new Map<string, string>(),
+                    formatConfigs: formatConfigs,
                     sourcePath: this.targetFile?.path || "",
                     component: this.plugin
                 };
                  
+                // 渲染消息
                 ChatBubbleRenderer.render(element, options);
                  
                 // 重置
@@ -1619,7 +1624,7 @@ export class ChatView extends ItemView {
                 align: direction,
                 continued: false,
                 colorConfigs: colorConfigs,
-                formatConfigs: new Map<string, string>(),
+                formatConfigs: formatConfigs,
                 sourcePath: this.targetFile?.path || "",
                 component: this.plugin
             };

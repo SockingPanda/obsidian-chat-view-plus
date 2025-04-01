@@ -1,6 +1,15 @@
-import { Component } from "obsidian";
+import { Component, MarkdownRenderer } from "obsidian";
 import { ChatBubbleOptions } from "../models/message";
 import { ConfigParser } from "./config-parser";
+import { 
+    FORMAT_CONFIG_REGEX, 
+    COLOR_CONFIG_REGEX, 
+    MESSAGE_DIR_REGEX, 
+    MESSAGE_END_REGEX, 
+    TIME_COMMENT_REGEX,
+    TIME_CLEANUP_REGEX,
+    parseHeaderAndTime
+} from "../constants";
 
 /**
  * Markdown Chat 解析器
@@ -15,17 +24,6 @@ import { ConfigParser } from "./config-parser";
  * 4. 普通注释: 非消息和非时间标记的文本，居中显示
  */
 export class MarkdownChatParser {
-    // 配置相关正则
-    private static readonly formatConfigRegex = /^{(.+?)}$/;
-    private static readonly colorConfigRegex = /^\[(.+?)]$/;
-
-    // 消息相关正则
-    private static readonly messageDirRegex = /^@(left|right|center)\s+(.*)$/i;
-    private static readonly messageEndRegex = /^___+$/;  // 至少三个下划线
-    
-    // 带时间的注释正则，匹配 [time] 或 (time) 格式
-    private static readonly timeCommentRegex = /^\s*(\[.+?\]|\(.+?\))\s+(.+)$/;
-
     public static parse(
         source: string,
         element: HTMLElement,
@@ -40,10 +38,10 @@ export class MarkdownChatParser {
         // 第一步：解析全局配置
         for (const line of lines) {
             const trimmedLine = line.trim();
-            if (this.formatConfigRegex.test(trimmedLine)) {
+            if (FORMAT_CONFIG_REGEX.test(trimmedLine)) {
                 const lineFormats = ConfigParser.parseFormatConfigs(trimmedLine);
                 lineFormats.forEach((v, k) => formats.set(k, v));
-            } else if (this.colorConfigRegex.test(trimmedLine)) {
+            } else if (COLOR_CONFIG_REGEX.test(trimmedLine)) {
                 const lineColors = ConfigParser.parseColorConfigs(trimmedLine);
                 lineColors.forEach((v, k) => colors.set(k, v));
             }
@@ -61,38 +59,44 @@ export class MarkdownChatParser {
             const line = lines[i].trimEnd();  // 只去除行尾空白，保留开头缩进
             
             // 跳过配置行
-            if (this.formatConfigRegex.test(line.trim()) || this.colorConfigRegex.test(line.trim())) {
+            if (FORMAT_CONFIG_REGEX.test(line.trim()) || COLOR_CONFIG_REGEX.test(line.trim())) {
                 continue;
             }
             
             // 消息开始行 @left|@right|@center [name] [time]
-            if (!inMessage && this.messageDirRegex.test(line.trim())) {
+            if (!inMessage && MESSAGE_DIR_REGEX.test(line.trim())) {
                 // 如果有积累的注释，先渲染注释
                 if (commentContent.trim()) {
-                    element.createEl("div", {
-                        text: commentContent, 
-                        cls: ["chat-view-comment"]
+                    // 创建markdown渲染容器
+                    const commentEl = element.createDiv({
+                        cls: ["chat-view-comment", "markdown-rendered"]
                     });
+                    
+                    // 使用Obsidian的MarkdownRenderer渲染注释内容
+                    try {
+                        MarkdownRenderer.renderMarkdown(
+                            commentContent, 
+                            commentEl, 
+                            sourcePath, 
+                            component
+                        );
+                    } catch (e) {
+                        commentEl.setText(commentContent);
+                    }
+                    
                     commentContent = "";
                 }
                 
-                const match = line.trim().match(this.messageDirRegex);
+                const match = line.trim().match(MESSAGE_DIR_REGEX);
                 if (match) {
                     inMessage = true;
                     messageDir = match[1].toLowerCase();
                     
-                    // 解析剩余部分为头部和时间
-                    const headerTimeParts = match[2].trim().split(/\s+(?=[[\(])/);
-                    if (headerTimeParts.length > 0) {
-                        messageHeader = headerTimeParts[0].trim();
-                        
-                        // 提取时间（如果存在）
-                        if (headerTimeParts.length > 1) {
-                            messageTime = headerTimeParts.slice(1).join(" ").trim();
-                            // 移除时间中的中括号
-                            messageTime = messageTime.replace(/^\[|\]$/g, "");
-                        }
-                    }
+                    // 使用parseHeaderAndTime函数解析头部和时间
+                    const { header, time } = parseHeaderAndTime(match[2].trim());
+                    messageHeader = header;
+                    messageTime = time;
+                    
                     
                     messageContent = "";
                 }
@@ -100,7 +104,7 @@ export class MarkdownChatParser {
             }
             
             // 消息结束标记
-            if (inMessage && this.messageEndRegex.test(line.trim())) {
+            if (inMessage && MESSAGE_END_REGEX.test(line.trim())) {
                 // 渲染消息
                 const align = messageDir === "left" ? "left" : 
                               messageDir === "right" ? "right" : "center";
@@ -117,6 +121,7 @@ export class MarkdownChatParser {
                     sourcePath: sourcePath,
                     component: component
                 };
+                
                 
                 renderCallback(element, options);
                 
@@ -139,20 +144,33 @@ export class MarkdownChatParser {
                 }
             } else {
                 // 检查是否是带时间的注释行
-                const timeCommentMatch = line.match(this.timeCommentRegex);
+                const timeCommentMatch = line.match(TIME_COMMENT_REGEX);
                 
                 if (timeCommentMatch) {
                     // 如果有积累的普通注释，先渲染
                     if (commentContent.trim()) {
-                        element.createEl("div", {
-                            text: commentContent, 
-                            cls: ["chat-view-comment"]
+                        // 创建markdown渲染容器
+                        const commentEl = element.createDiv({
+                            cls: ["chat-view-comment", "markdown-rendered"]
                         });
+                        
+                        // 使用Obsidian的MarkdownRenderer渲染注释内容
+                        try {
+                            MarkdownRenderer.renderMarkdown(
+                                commentContent, 
+                                commentEl, 
+                                sourcePath, 
+                                component
+                            );
+                        } catch (e) {
+                            commentEl.setText(commentContent);
+                        }
+                        
                         commentContent = "";
                     }
                     
                     // 提取时间和注释内容
-                    const timeStr = timeCommentMatch[1].replace(/^\[|\]$|\(|\)$/g, "");
+                    const timeStr = timeCommentMatch[1].replace(TIME_CLEANUP_REGEX, "");
                     const commentText = timeCommentMatch[2];
                     
                     // 创建带时间的注释容器
@@ -160,11 +178,22 @@ export class MarkdownChatParser {
                         cls: ["chat-view-time-comment-container"]
                     });
                     
-                    // 添加注释内容，居中
-                    timeCommentContainer.createDiv({
-                        text: commentText,
-                        cls: ["chat-view-centered-comment"]
+                    // 添加注释内容，居中并且使用Markdown渲染
+                    const centeredComment = timeCommentContainer.createDiv({
+                        cls: ["chat-view-centered-comment", "markdown-rendered"]
                     });
+                    
+                    // 渲染Markdown内容
+                    try {
+                        MarkdownRenderer.renderMarkdown(
+                            commentText, 
+                            centeredComment, 
+                            sourcePath, 
+                            component
+                        );
+                    } catch (e) {
+                        centeredComment.setText(commentText);
+                    }
                     
                     // 添加时间作为脚注，右下角对齐
                     timeCommentContainer.createEl("span", {
@@ -203,10 +232,22 @@ export class MarkdownChatParser {
             renderCallback(element, options);
         } else if (commentContent.trim()) {
             // 还有未渲染的注释
-            element.createEl("div", {
-                text: commentContent, 
-                cls: ["chat-view-comment"]
+            // 创建markdown渲染容器
+            const commentEl = element.createDiv({
+                cls: ["chat-view-comment", "markdown-rendered"]
             });
+            
+            // 使用Obsidian的MarkdownRenderer渲染注释内容
+            try {
+                MarkdownRenderer.renderMarkdown(
+                    commentContent, 
+                    commentEl, 
+                    sourcePath, 
+                    component
+                );
+            } catch (e) {
+                commentEl.setText(commentContent);
+            }
         }
     }
 } 
