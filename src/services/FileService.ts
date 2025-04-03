@@ -13,6 +13,9 @@ export class FileService {
     
     /**
      * 获取当前绑定的文件
+     * 按照优先级顺序尝试获取：日记文件 > 活动文件 > 默认绑定文件
+     * @returns Promise<TFile | null> 返回找到的文件或null
+     * @public
      */
     async getTargetFile(): Promise<TFile | null> {
         try {
@@ -59,6 +62,10 @@ export class FileService {
     
     /**
      * 获取指定路径的文件，不存在则创建
+     * 确保文件路径有正确的扩展名和所需的目录结构
+     * @param filePath 文件路径
+     * @returns Promise<TFile | null> 返回找到或创建的文件，失败则返回null
+     * @public
      */
     async getOrCreateFile(filePath: string): Promise<TFile | null> {
         // 确保文件路径有正确的扩展名
@@ -109,6 +116,9 @@ export class FileService {
     
     /**
      * 获取当天的日记文件
+     * 根据日记插件设置或默认设置获取或创建当天的日记文件
+     * @returns Promise<TFile | null> 返回日记文件，失败则返回null
+     * @public
      */
     async getDailyNoteFile(): Promise<TFile | null> {
         try {
@@ -238,6 +248,9 @@ export class FileService {
     
     /**
      * 获取日记插件设置
+     * 尝试获取官方日记插件或社区日记插件的设置
+     * @returns {folder: string, format: string} | null 返回日记设置或null
+     * @private
      */
     private getDailyNotesSettings(): { folder: string, format: string } | null {
         try {
@@ -446,8 +459,11 @@ export class FileService {
     
     /**
      * 创建新的聊天块
+     * @param file 目标文件
+     * @param title 可选的聊天块标题
+     * @returns 是否成功创建
      */
-    async createNewChatBlock(file: TFile): Promise<boolean> {
+    async createNewChatBlock(file: TFile, title?: string): Promise<boolean> {
         try {
             let content = await this.app.vault.read(file);
             
@@ -462,8 +478,14 @@ export class FileService {
                 .map(role => `${role.name}=${role.color}`)
                 .join(", ");
                 
-            content += `[${colorConfigs}]\n\n`;
-            content += "```";
+            content += `[${colorConfigs}]\n`;
+            
+            // 如果提供了标题，添加标题属性
+            if (title && title.trim()) {
+                content += `{title=${title.trim()}}\n`;
+            }
+            
+            content += "\n```";
             
             await this.app.vault.modify(file, content);
             return true;

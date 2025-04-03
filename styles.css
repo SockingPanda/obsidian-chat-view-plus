@@ -1097,34 +1097,21 @@ option.chat-view-temporary-role {
 .chat-view-modal-buttons {
     display: flex;
     justify-content: flex-end;
-    gap: 12px;
+    gap: 8px;
 }
 
-.chat-view-modal-button {
-    padding: 8px 16px;
+.chat-view-modal-buttons button {
+    padding: 6px 12px;
     border-radius: 4px;
-    border: none;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-
-.chat-view-modal-button-primary {
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-}
-
-.chat-view-modal-button-primary:hover {
-    background-color: var(--interactive-accent-hover);
-}
-
-.chat-view-modal-button-secondary {
     background-color: var(--background-secondary);
     color: var(--text-normal);
+    cursor: pointer;
+    border: 1px solid var(--background-modifier-border);
 }
 
-.chat-view-modal-button-secondary:hover {
-    background-color: var(--background-secondary-alt);
+.chat-view-modal-buttons button.mod-cta {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
 }
 
 /* 颜色预览 */
@@ -1582,4 +1569,21 @@ option.chat-view-temporary-role {
 
 .popover.hover-popover *::-webkit-scrollbar-track {
     background-color: var(--scrollbar-bg) !important;
+}
+
+/* 聊天标题输入样式 */
+.chat-view-title-input {
+    width: 100%;
+    margin-bottom: 16px;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid var(--background-modifier-border);
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+}
+
+.chat-view-title-input:focus {
+    outline: none;
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.3);
 }

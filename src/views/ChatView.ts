@@ -1,10 +1,15 @@
-import { ItemView, WorkspaceLeaf, Menu, Notice, TFile, setIcon } from "obsidian";
+import { ItemView, WorkspaceLeaf, Menu, Notice, TFile, setIcon, Modal } from "obsidian";
 import ChatViewPlusPlugin from "../index";
 import { ChatBubbleOptions } from "../models/message";
 import { ChatBubbleRenderer } from "../renderers/chat-bubble";
 import { ChatRole } from "../models/settings";
 import { CHAT_VIEW_TYPE } from "../constants/view";
-import { MESSAGE_DIR_REGEX, MESSAGE_END_REGEX, parseHeaderAndTime } from "../constants";
+import { 
+    MESSAGE_DIR_REGEX, 
+    MESSAGE_END_REGEX, 
+    TITLE_CONFIG_REGEX,
+    parseHeaderAndTime 
+} from "../constants";
 
 export class ChatView extends ItemView {
     private plugin: ChatViewPlusPlugin;
@@ -141,6 +146,8 @@ export class ChatView extends ItemView {
     
     /**
      * 创建灵动岛式文件显示
+     * 用于显示当前绑定的文件名称，并提供聊天块选择、创建新聊天块和预设菜单功能
+     * @private
      */
     private createFileDisplay(): void {
         this.fileDisplay = this.contentEl.createDiv({
@@ -213,13 +220,8 @@ export class ChatView extends ItemView {
         // 创建新聊天块事件处理
         newChatButton.addEventListener("click", async () => {
             if (this.targetFile) {
-                await this.plugin.fileService.createNewChatBlock(this.targetFile);
-                const chatCount = await this.plugin.fileService.getChatBlocksCount(this.targetFile);
-                this.plugin.settings.currentChatIndex = chatCount - 1;
-                await this.plugin.saveSettings();
-                await this.updateChatBlockSelect(chatBlockSelect);
-                await this.loadFileContent();
-                new Notice("已创建新聊天块");
+                // 弹出对话框让用户输入标题（可选）
+                this.showNewChatBlockModal(chatBlockSelect);
             } else {
                 new Notice("未绑定文件，无法创建聊天块");
             }
@@ -245,7 +247,88 @@ export class ChatView extends ItemView {
     }
     
     /**
+     * 显示创建新聊天块的模态框
+     * @param chatBlockSelect 聊天块选择元素，用于创建后更新
+     */
+    private showNewChatBlockModal(chatBlockSelect: HTMLSelectElement): void {
+        // 创建模态框
+        const titlePrompt = new Modal(this.app);
+        titlePrompt.titleEl.setText("新建聊天块");
+        
+        // 创建表单元素
+        const contentEl = titlePrompt.contentEl;
+        contentEl.createEl("p", {text: "请输入聊天块标题（可选）："});
+        
+        // 创建输入框
+        const inputContainer = contentEl.createDiv();
+        const titleInput = inputContainer.createEl("input", {
+            attr: {
+                type: "text",
+                placeholder: "标题（可选）"
+            },
+            cls: "chat-view-title-input"
+        });
+        
+        // 聚焦输入框
+        setTimeout(() => titleInput.focus(), 50);
+        
+        // 创建按钮组
+        const buttonContainer = contentEl.createDiv({cls: "chat-view-modal-buttons"});
+        
+        // 取消按钮
+        const cancelButton = buttonContainer.createEl("button", {text: "取消"});
+        cancelButton.addEventListener("click", () => {
+            titlePrompt.close();
+        });
+        
+        // 确认按钮
+        const confirmButton = buttonContainer.createEl("button", {
+            text: "确认",
+            cls: "mod-cta"
+        });
+        
+        // 处理确认创建聊天块的逻辑
+        const handleConfirm = async () => {
+            const titleValue = titleInput.value;
+            const file = this.targetFile;
+            
+            if (file) {
+                await this.plugin.fileService.createNewChatBlock(file, titleValue);
+                const chatCount = await this.plugin.fileService.getChatBlocksCount(file);
+                this.plugin.settings.currentChatIndex = chatCount - 1;
+                await this.plugin.saveSettings();
+                await this.updateChatBlockSelect(chatBlockSelect);
+                await this.loadFileContent();
+                new Notice("已创建新聊天块");
+            }
+            
+            titlePrompt.close();
+        };
+        
+        // 点击确认按钮时创建聊天块
+        confirmButton.addEventListener("click", handleConfirm);
+        
+        // 按下回车键时也创建聊天块
+        titleInput.addEventListener("keydown", (e: KeyboardEvent) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                handleConfirm();
+            }
+        });
+        
+        // 打开模态框
+        titlePrompt.open();
+    }
+    
+    /**
      * 更新聊天块选择下拉列表
+     * 从文件中提取所有聊天块，并按照以下优先级确定显示标题：
+     * 1. 首先查找自定义标题属性 {title=xxx}
+     * 2. 如果没有自定义标题，则使用第一条消息的发送者名称
+     * 3. 如果都没有，则使用默认标题 "聊天 x"
+     * @param selectElement 要更新的下拉列表元素
+     * @returns Promise 表示操作完成
+     * @private
      */
     private async updateChatBlockSelect(selectElement: HTMLSelectElement): Promise<void> {
         if (!this.targetFile) return;
@@ -261,19 +344,33 @@ export class ChatView extends ItemView {
             let index = 0;
             
             while ((match = chatBlockRegex.exec(content)) !== null) {
-                // 尝试提取聊天块的标题或使用序号作为标题
-                let title = `聊天 ${index + 1}`;
+                // 获取聊天块的内容
+                const blockContent = match[1];
                 
-                // 查找第一条消息作为标题
-                const firstMessageRegex = /@(?:left|right|center)\s+([^\[]+)/;
-                const messageMatch = match[1].match(firstMessageRegex);
-                if (messageMatch && messageMatch[1]) {
-                    title = `${index + 1}. ${messageMatch[1].trim()}`;
+                // 尝试按照以下优先级提取聊天块标题：
+                // 1. 首先查找自定义标题属性 {title=xxx}
+                // 2. 如果没有自定义标题，则使用第一条消息的发送者名称
+                // 3. 如果都没有，则使用默认标题 "聊天 x"
+                let blockTitle = `聊天 ${index + 1}`;
+                
+                // 查找自定义标题
+                const titleMatch = blockContent.match(TITLE_CONFIG_REGEX);
+                if (titleMatch && titleMatch[1]) {
+                    blockTitle = `${index + 1}. ${titleMatch[1].trim()}`;
+                } else {
+                    // 查找第一条消息的发送者
+                    const firstMessageMatch = blockContent.match(MESSAGE_DIR_REGEX);
+                    if (firstMessageMatch && firstMessageMatch[2]) {
+                        const { header } = parseHeaderAndTime(firstMessageMatch[2].trim());
+                        if (header) {
+                            blockTitle = `${index + 1}. ${header}`;
+                        }
+                    }
                 }
                 
                 chatBlocks.push({
                     index: index,
-                    title: title
+                    title: blockTitle
                 });
                 
                 index++;
@@ -307,7 +404,10 @@ export class ChatView extends ItemView {
     }
     
     /**
-     * 显示菜单
+     * 显示预设和文件操作菜单
+     * 包括创建新预设、管理预设、切换文件绑定等选项
+     * @param event 触发菜单的鼠标事件
+     * @private
      */
     private showMenu(event: MouseEvent): void {
         const menu = new Menu();
@@ -415,7 +515,10 @@ export class ChatView extends ItemView {
     }
     
     /**
-     * 弹出文件选择器
+     * 打开文件选择模态框，让用户选择要绑定的文件
+     * 支持选择现有文件或创建新文件
+     * @returns 返回选择的文件对象，如果用户取消则返回null
+     * @private
      */
     private async selectFile(): Promise<TFile | null> {
         return new Promise((resolve) => {
@@ -505,6 +608,9 @@ export class ChatView extends ItemView {
     
     /**
      * 创建预设选择器
+     * 用于显示和选择用户保存的聊天预设
+     * @param container 要添加预设选择器的容器元素
+     * @private
      */
     private createPresetSelector(container: HTMLElement): void {
         // 清空容器
@@ -585,7 +691,11 @@ export class ChatView extends ItemView {
     }
     
     /**
-     * 检查是否为临时角色
+     * 检查指定的角色名称是否为临时角色
+     * 临时角色以">"开头，用于快速创建一次性角色
+     * @param roleName 要检查的角色名称
+     * @returns 如果是临时角色则返回true，否则返回false
+     * @private
      */
     private isTemporaryRole(roleName: string): boolean {
         // 如果角色不在设置的角色列表中，则视为临时角色
@@ -593,7 +703,11 @@ export class ChatView extends ItemView {
     }
     
     /**
-     * 处理预设切换后的角色选择
+     * 预设变更后处理角色选择
+     * 在预设变更后尝试恢复之前的角色选择，或根据情况选择新的角色
+     * @param previousRoleName 变更前选择的角色名称
+     * @param isTemporaryRole 之前选择的是否为临时角色
+     * @private
      */
     private handleRoleSelectionAfterPresetChange(previousRoleName: string, isTemporaryRole: boolean): void {
         const roleSelect = this.roleSelector.querySelector(".chat-view-role-select") as HTMLSelectElement;
@@ -643,7 +757,9 @@ export class ChatView extends ItemView {
     }
     
     /**
-     * 更新角色选择器的内容
+     * 更新角色选择下拉列表
+     * 根据当前预设和临时角色刷新角色选择器的内容
+     * @private
      */
     private updateRoleSelector(): void {
         // 清空角色选择器
@@ -749,7 +865,10 @@ export class ChatView extends ItemView {
     }
     
     /**
-     * 获取当前的临时角色列表
+     * 获取临时角色列表
+     * 从本地存储中读取用户创建的临时角色
+     * @returns 临时角色列表数组
+     * @private
      */
     private getTemporaryRoles(): ChatRole[] {
         const tempRoles: ChatRole[] = [];
@@ -806,7 +925,11 @@ export class ChatView extends ItemView {
     }
     
     /**
-     * 获取存储的临时角色
+     * 获取指定名称的临时角色
+     * 从本地存储中查找并返回指定名称的临时角色
+     * @param name 要查找的临时角色名称
+     * @returns 找到的临时角色，如果不存在则返回null
+     * @private
      */
     private getStoredTemporaryRole(name: string): ChatRole | null {
         // 获取会话存储中的临时角色
@@ -830,7 +953,10 @@ export class ChatView extends ItemView {
     }
     
     /**
-     * 存储临时角色到会话存储
+     * 存储临时角色
+     * 将临时角色保存到本地存储中，如果同名角色已存在则更新
+     * @param role 要存储的临时角色对象
+     * @private
      */
     private storeTemporaryRole(role: ChatRole): void {
         try {
@@ -845,6 +971,10 @@ export class ChatView extends ItemView {
     
     /**
      * 删除临时角色
+     * 从本地存储中删除指定名称的临时角色
+     * @param roleName 要删除的临时角色名称
+     * @returns Promise表示操作完成
+     * @private
      */
     private async deleteTemporaryRole(roleName: string): Promise<void> {
         try {
@@ -885,6 +1015,10 @@ export class ChatView extends ItemView {
     
     /**
      * 更新角色操作按钮
+     * 根据当前选中的角色类型（普通/临时）显示或隐藏相应的操作按钮
+     * @param isTemp 当前选中的是否为临时角色
+     * @param container 包含按钮的容器元素，如果未提供则从DOM中查找
+     * @private
      */
     private updateRoleActionButtons(isTemp: boolean, container?: HTMLElement): void {
         // 获取或创建按钮容器
@@ -933,7 +1067,11 @@ export class ChatView extends ItemView {
     }
     
     /**
-     * 显示自定义角色创建模态框
+     * 显示自定义角色模态框
+     * 用于创建新角色或编辑现有角色的属性
+     * @param editRole 要编辑的角色对象，如果为空则创建新角色
+     * @returns Promise表示操作完成
+     * @private
      */
     private async showCustomRoleModal(editRole?: ChatRole | null): Promise<void> {
         // 创建模态框背景
@@ -1201,7 +1339,11 @@ export class ChatView extends ItemView {
     }
     
     /**
-     * 添加角色属性到当前聊天块
+     * 向当前聊天添加角色属性
+     * 将角色的颜色属性添加到当前聊天块的配置中
+     * @param role 要添加属性的角色对象
+     * @returns Promise表示操作完成
+     * @private
      */
     private async addRoleAttributesToCurrentChat(role: ChatRole): Promise<void> {
         if (!this.targetFile) return;
@@ -1264,6 +1406,8 @@ export class ChatView extends ItemView {
     
     /**
      * 更新预设信息显示
+     * 在UI中显示当前使用的预设名称
+     * @private
      */
     private updatePresetInfo(): void {
         const presetInfo = this.contentEl.querySelector(".chat-view-current-preset");
@@ -1277,7 +1421,10 @@ export class ChatView extends ItemView {
     }
     
     /**
-     * 加载绑定的目标文件内容
+     * 加载目标文件
+     * 获取并设置当前绑定的文件，更新UI显示并加载文件内容
+     * @returns Promise表示操作完成
+     * @public
      */
     async loadTargetFile() {
         try {
@@ -1339,7 +1486,11 @@ export class ChatView extends ItemView {
     }
     
     /**
-     * 更新文件显示区域
+     * 更新文件显示
+     * 更新灵动岛上显示的文件名和路径信息
+     * @param filename 要显示的文件名
+     * @param path 文件的完整路径
+     * @private
      */
     private updateFileDisplay(filename: string, path: string): void {
         const filenameDisplay = this.fileDisplay.querySelector(".chat-view-dynamic-island-filename");
@@ -1371,6 +1522,9 @@ export class ChatView extends ItemView {
     
     /**
      * 发送消息
+     * 将当前输入框中的消息以当前选中角色的身份发送到绑定文件中
+     * @returns Promise表示操作完成
+     * @public
      */
     async sendMessage() {
         // 获取输入框内容
@@ -1436,6 +1590,9 @@ export class ChatView extends ItemView {
     
     /**
      * 从文件中加载并显示聊天内容
+     * 读取当前绑定文件中的内容并渲染到界面上
+     * @returns Promise表示操作完成
+     * @public
      */
     async loadFileContent() {
         if (!this.targetFile) {
@@ -1468,6 +1625,7 @@ export class ChatView extends ItemView {
     
     /**
      * 显示聊天内容
+     * 解析并渲染文件中的聊天内容到界面上
      */
     displayChatContent(content: string) {
         // 清空聊天容器
@@ -1506,6 +1664,8 @@ export class ChatView extends ItemView {
     
     /**
      * 显示欢迎消息
+     * 当文件中没有聊天内容时，显示欢迎信息和使用引导
+     * @private
      */
     private showWelcomeMessage(): void {
         const welcomeDiv = this.chatContainer.createDiv({
@@ -1517,7 +1677,9 @@ export class ChatView extends ItemView {
     }
     
     /**
-     * 滚动到底部
+     * 滚动聊天区域到底部
+     * 在添加新消息或加载聊天内容后自动滚动到最新消息
+     * @private
      */
     private scrollToBottom(): void {
         if (this.chatContainer) {
@@ -1635,6 +1797,9 @@ export class ChatView extends ItemView {
 
     /**
      * 处理活动文件变更
+     * 当启用"绑定活动文件"选项时，自动跟随当前打开的文件
+     * @returns Promise表示操作完成
+     * @private
      */
     private async handleActiveFileChange(): Promise<void> {
         const activeFile = this.app.workspace.getActiveFile();

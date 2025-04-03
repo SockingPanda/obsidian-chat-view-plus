@@ -2,6 +2,27 @@
 
 This document records all significant changes to the Chat View Plus plugin.
 
+## [1.1.2] - 2025-04-02
+
+### Improvements
+- Enhanced code documentation
+  - Added comprehensive JSDoc comments for all major classes and methods
+  - Improved code readability and maintainability
+  - Unified comment style and format
+- Enhanced user interface
+  - Optimized button spacing in chat view
+  - Added new chat title input styling
+  - Improved overall interaction experience
+
+### Bug Fixes
+- Fixed missing code comments issues
+- Optimized code structure documentation
+- Fixed chat block title display issues
+
+### Other
+- Updated style files to optimize interface layout
+- Improved code organization structure
+
 ## [1.1.1] - 2025-04-01
 
 ### Bug Fixes

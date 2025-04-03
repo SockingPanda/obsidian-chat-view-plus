@@ -95,11 +95,6 @@ ___
 
 This project draws inspiration from the [Obsidian Chat View](https://github.com/adifyr/obsidian-chat-view) plugin by Aditya Majethia.
 
-## Roadmap
-
-See our development plans and upcoming features:
-- [English Roadmap](docs/ROADMAP_EN.md)
-- [中文路线图](docs/ROADMAP.md)
 
 ## Changelog
 

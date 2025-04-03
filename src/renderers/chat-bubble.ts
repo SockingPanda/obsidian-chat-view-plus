@@ -2,7 +2,20 @@ import { MarkdownRenderer, Platform, Component, App, setIcon, TFile, HoverParent
 import { ChatBubbleOptions } from "../models/message";
 import { HEADER_TIME_REGEX, TIME_CLEANUP_REGEX, parseHeaderAndTime } from "../constants";
 
+/**
+ * 聊天气泡渲染器
+ * 负责将消息数据渲染为聊天气泡界面组件
+ * 支持不同对齐方式、颜色主题和特殊内容格式
+ */
 export class ChatBubbleRenderer {
+    /**
+     * 渲染聊天气泡
+     * 根据提供的选项创建并样式化聊天气泡组件
+     * @param element 用于渲染的父HTML元素
+     * @param options 气泡渲染选项，包含内容、样式和元数据
+     * @public
+     * @static
+     */
     public static render(element: HTMLElement, options: ChatBubbleOptions): void {
         const {
             header,
@@ -80,6 +93,13 @@ export class ChatBubbleRenderer {
     
     /**
      * 处理嵌入内容
+     * 渲染消息中嵌入的图片、笔记等内容
+     * @param element 包含嵌入内容的HTML元素
+     * @param sourcePath 源文件路径
+     * @param component Obsidian组件实例
+     * @param app Obsidian应用实例
+     * @private
+     * @static
      */
     private static processEmbeds(element: HTMLElement, sourcePath: string, component: Component, app: App): void {
         // 处理图片嵌入 ![[image.png]]

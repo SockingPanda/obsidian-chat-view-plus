@@ -8,6 +8,7 @@ import {
     MESSAGE_END_REGEX, 
     TIME_COMMENT_REGEX,
     TIME_CLEANUP_REGEX,
+    TITLE_CONFIG_REGEX,
     parseHeaderAndTime
 } from "../constants";
 
@@ -16,14 +17,26 @@ import {
  * 新的格式设计:
  * 
  * 1. 配置行仍然保持 {key=value} 和 [name=color] 格式
- * 2. 聊天消息使用新格式:
+ * 2. 特殊配置: {title=聊天标题} - 用于在聊天块选择器中显示
+ * 3. 聊天消息使用新格式:
  *    @left|@right|@center [name] [time]
  *    消息内容 (支持完整的 Markdown 格式)
  *    ___（三个下划线作为消息结束符）
- * 3. 带时间的注释: [time] 注释内容 - 注释内容居中，时间作为脚注放在右下角
- * 4. 普通注释: 非消息和非时间标记的文本，居中显示
+ * 4. 带时间的注释: [time] 注释内容 - 注释内容居中，时间作为脚注放在右下角
+ * 5. 普通注释: 非消息和非时间标记的文本，居中显示
  */
 export class MarkdownChatParser {
+    /**
+     * 解析Markdown格式的聊天内容
+     * 将原始文本解析为聊天气泡、注释和时间标记等组件
+     * @param source 原始Markdown文本
+     * @param element 用于渲染内容的HTML元素
+     * @param sourcePath 源文件路径
+     * @param renderCallback 渲染回调函数，用于生成聊天气泡
+     * @param component Obsidian组件实例，用于Markdown渲染
+     * @public
+     * @static
+     */
     public static parse(
         source: string,
         element: HTMLElement,
