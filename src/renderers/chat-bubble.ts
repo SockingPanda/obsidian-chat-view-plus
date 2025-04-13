@@ -72,23 +72,23 @@ export class ChatBubbleRenderer {
             }
         }
         
-        // 始终显示时间信息，如果没有提供时间则使用当前时间
+        // 仅在提供时间信息时显示时间
         let timeToShow = subtext && subtext.length > 0 
             ? subtext 
-            : window.moment().format("YYYY-MM-DD HH:mm:ss");
+            : "";
         
         // 确保时间格式正确 - 移除可能存在的括号
         if (timeToShow) {
             timeToShow = timeToShow.replace(TIME_CLEANUP_REGEX, "");
-        }
             
-        const subtextEl = bubble.createEl("sub", {
-            text: timeToShow, 
-            cls: ["chat-view-subtext"]
-        });
-        
-        subtextEl.style.display = "block";
-        subtextEl.style.marginTop = "4px";
+            const subtextEl = bubble.createEl("sub", {
+                text: timeToShow, 
+                cls: ["chat-view-subtext"]
+            });
+            
+            subtextEl.style.display = "block";
+            subtextEl.style.marginTop = "4px";
+        }
     }
     
     /**

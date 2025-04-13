@@ -375,8 +375,8 @@ export class FileService {
             
             let createdNewChatBlock = false;
             
-            // 使用提供的时间或者当前时间
-            const messageTime = timeString || window.moment().format("YYYY-MM-DD HH:mm:ss");
+            // 使用提供的时间，如果未提供则使用空字符串
+            const messageTime = timeString || "";
             
             if (chatBlocks.length > 0 && chatIndex < chatBlocks.length) {
                 // 更新现有聊天块
