@@ -226,10 +226,16 @@ export class ChatBubbleRenderer {
     
     /**
      * 处理链接
+     * 为内部链接添加正确的属性和事件处理
+     * @param element 包含链接的HTML元素
+     * @param sourcePath 源文件路径
+     * @param app Obsidian应用实例
+     * @private
+     * @static
      */
     private static processLinks(element: HTMLElement, sourcePath: string, app: App): void {
         // 处理内部链接
-        const internalLinks = element.querySelectorAll(".internal-link");
+        const internalLinks = element.querySelectorAll("a.internal-link");
         
         internalLinks.forEach((link) => {
             // 确保链接是HTMLElement类型
@@ -245,35 +251,23 @@ export class ChatBubbleRenderer {
             const targetFile = app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath);
             
             // 设置所有Obsidian需要的数据属性以启用原生预览
-            link.classList.add("internal-link"); // 确保有正确的类名
+            link.classList.add("internal-link");
+            link.classList.remove("external-link"); // 删除可能的外部链接类
             link.removeAttribute("target"); // 删除可能的外部链接属性
             
             // 确保有必要的属性
             if (targetFile) {
-                // 设置必要的Obsidian链接属性
-                link.dataset.href = href;
-                link.dataset.type = "link";
-                link.dataset.path = targetFile.path;
-                
-                // 添加更多Obsidian链接属性以确保预览工作
-                const fileName = targetFile.basename;
-                link.setAttribute("aria-label", fileName);
-                
-                // 为链接添加可辨识的标记，确保Obsidian的预览系统能识别它
-                link.dataset.filepath = targetFile.path;
-                
                 // 注册官方的链接预览功能
                 this.registerHoverPreview(link, targetFile, app);
-            }
-            
-            // 点击事件处理
-            link.addEventListener("click", (event) => {
-                event.preventDefault();
+            } else {
+                // 找不到文件时，设置为创建新文件的链接
+                link.classList.add("is-unresolved");
+                link.setAttribute("data-link-status", "not-exists");
                 
-                if (targetFile) {
-                    // 打开文件
-                    app.workspace.getLeaf(false).openFile(targetFile);
-                } else {
+                // 为未解析的链接添加点击事件
+                link.addEventListener("click", (event) => {
+                    event.preventDefault();
+                    
                     // 找不到文件，提示创建
                     const createConfirm = confirm(`文件 "${href}" 不存在。是否创建?`);
                     if (createConfirm) {
@@ -296,16 +290,35 @@ export class ChatBubbleRenderer {
                             app.workspace.getLeaf(false).openFile(file);
                         });
                     }
-                }
-            });
+                });
+            }
         });
     }
     
     /**
      * 注册官方的链接预览功能
      * 这是直接使用Obsidian的页面预览API
+     * @param linkEl 链接元素
+     * @param targetFile 目标文件
+     * @param app Obsidian应用实例
+     * @private
+     * @static
      */
     private static registerHoverPreview(linkEl: HTMLElement, targetFile: TFile, app: App): void {
+        // 首先设置所有必要的属性和类，确保Obsidian能正确识别链接
+        linkEl.dataset.href = targetFile.path;
+        linkEl.dataset.type = "link";
+        linkEl.dataset.path = targetFile.path;
+        
+        // 使用官方指定的CSS类
+        linkEl.classList.add("internal-link");
+        linkEl.classList.add("cm-hmd-internal-link");
+        
+        // 设置额外属性以帮助Obsidian识别这是一个可预览链接
+        linkEl.setAttribute("data-link-path", targetFile.path);
+        linkEl.setAttribute("data-link-type", "internal");
+        linkEl.setAttribute("data-link-status", "exists");
+        
         // 使用事件监听方式让Obsidian的hover功能生效
         linkEl.addEventListener('mouseover', (event) => {
             // 阻止事件冒泡，避免其他处理器干扰
@@ -314,73 +327,83 @@ export class ChatBubbleRenderer {
             // 使用类型断言访问内部API
             const appAny = app as any;
             
-            // 方法1: 尝试使用页面预览插件API (适用于大多数Obsidian版本)
-            if (appAny.internalPlugins?.plugins['page-preview']?.enabled) {
-                try {
-                    const previewPlugin = appAny.internalPlugins.plugins['page-preview'].instance;
-                    if (previewPlugin && previewPlugin.onLinkHover) {
-                        // 当鼠标悬停时触发预览
-                        previewPlugin.onLinkHover(event, linkEl, targetFile.path);
-                        return; // 如果成功，就不尝试其他方法
-                    }
-                } catch (e) {
-                    console.warn('方法1 - 页面预览插件API调用失败:', e);
-                }
-            }
-            
-            // 方法2: 尝试直接使用应用级别的hover功能 (适用于新版本Obsidian)
+            // 方法1: 最新的官方API (Obsidian 1.8.x+)
             try {
-                if (appAny.workspace?.trigger) {
+                if (appAny.workspace?.trigger && typeof appAny.workspace.trigger === 'function') {
                     // 触发全局悬停事件
                     appAny.workspace.trigger('hover-link', {
                         event: event,
                         source: linkEl,
+                        hoverParent: linkEl.parentElement,
                         targetEl: linkEl,
-                        linktext: targetFile.path
+                        linktext: targetFile.path,
+                        sourcePath: targetFile.path
                     });
                     return; // 如果成功，就不尝试其他方法
                 }
             } catch (e) {
-                console.warn('方法2 - 工作区触发器API调用失败:', e);
+                console.warn('最新API调用失败:', e);
             }
             
-            // 方法3: 最直接的方法，尝试使用全局注册的hoverLinkSource (适用于最新版本)
+            // 方法2: 尝试使用页面预览插件API (适用于大多数Obsidian版本)
             try {
+                if (appAny.internalPlugins?.plugins['page-preview']?.enabled) {
+                    const previewPlugin = appAny.internalPlugins.plugins['page-preview'].instance;
+                    if (previewPlugin && previewPlugin.onLinkHover) {
+                        // 阻止冒泡非常重要
+                        event.stopPropagation();
+                        // 当鼠标悬停时触发预览
+                        previewPlugin.onLinkHover(event, linkEl, targetFile.path);
+                        return; // 如果成功，就不尝试其他方法
+                    }
+                }
+            } catch (e) {
+                console.warn('页面预览插件API调用失败:', e);
+            }
+            
+            // 方法3: 使用活跃视图的hover功能 (后备方案)
+            try {
+                if (appAny.workspace?.getActiveViewOfType) {
+                    const markdownView = appAny.workspace.getActiveViewOfType(appAny.MarkdownView);
+                    if (markdownView && markdownView.registerHoverLinkSource) {
+                        markdownView.registerHoverLinkSource({
+                            display: targetFile.path,
+                            targetEl: linkEl,
+                            linktext: targetFile.path,
+                            sourcePath: targetFile.path
+                        });
+                        return;
+                    }
+                }
+                
+                // 如果没有活跃的Markdown视图，尝试查找任何可用视图
                 if (appAny.workspace?.iterateLeaves) {
-                    // 查找任何激活的页面视图
-                    const activeViews: any[] = [];
-                    appAny.workspace.iterateLeaves((leaf: any) => {
-                        if (leaf.view && !leaf.view.leaf.containerEl.hidden) {
-                            activeViews.push(leaf.view);
-                        }
-                    });
+                    let foundValidView = false;
                     
-                    // 如果找到活跃视图，尝试使用它们的悬停功能
-                    if (activeViews.length > 0) {
-                        // 找一个可能具有registerHoverLinkSource功能的视图
-                        const view = activeViews.find(v => typeof v.registerHoverLinkSource === 'function');
-                        if (view && view.registerHoverLinkSource) {
-                            // 使用视图的registerHoverLinkSource来显示预览
-                            view.registerHoverLinkSource({
+                    // 查找任何激活的页面视图
+                    appAny.workspace.iterateLeaves((leaf: any) => {
+                        if (foundValidView) return;
+                        
+                        if (leaf.view && typeof leaf.view.registerHoverLinkSource === 'function') {
+                            leaf.view.registerHoverLinkSource({
                                 display: targetFile.path,
                                 targetEl: linkEl,
                                 linktext: targetFile.path,
                                 sourcePath: targetFile.path
                             });
+                            foundValidView = true;
                         }
-                    }
+                    });
                 }
             } catch (e) {
-                console.warn('方法3 - HoverLinkSource API调用失败:', e);
+                console.warn('视图API调用失败:', e);
             }
         });
 
-        // 为确保预览能够正确显示，还需要设置正确的属性和类
-        linkEl.classList.add('data-link-icon'); // 添加官方链接图标类
-        linkEl.classList.add('data-link-text'); // 添加官方链接文本类
-        
-        // 设置额外属性以帮助Obsidian识别这是一个可预览链接
-        linkEl.setAttribute('data-link-type', 'internal');
-        linkEl.setAttribute('data-link-status', 'exists');
+        // 点击事件处理
+        linkEl.addEventListener("click", (event) => {
+            event.preventDefault();
+            app.workspace.getLeaf(false).openFile(targetFile);
+        });
     }
 } 

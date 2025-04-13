@@ -1587,3 +1587,105 @@ option.chat-view-temporary-role {
     border-color: var(--interactive-accent);
     box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.3);
 }
+
+/* 增强链接悬停预览支持 */
+.chat-view-plus-container .internal-link {
+    color: var(--link-color);
+    text-decoration: none;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+}
+
+.chat-view-plus-container .internal-link.is-unresolved {
+    color: var(--text-error);
+    opacity: 0.8;
+    text-decoration: underline;
+}
+
+.chat-view-plus-container .cm-hmd-internal-link {
+    color: var(--link-color);
+    text-decoration: none !important;
+}
+
+.chat-view-plus-container .internal-link:hover {
+    text-decoration: underline;
+    color: var(--link-color-hover);
+}
+
+.popover.hover-popover {
+    z-index: 999;
+    animation: chat-popover-fade-in 0.3s ease-in-out;
+    max-height: 500px;
+    max-width: 500px;
+    overflow: auto;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--background-modifier-border);
+}
+
+@keyframes chat-popover-fade-in {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.popover.hover-popover .markdown-embed-content {
+    max-height: 450px;
+    padding: 0 16px;
+    margin-bottom: 8px;
+}
+
+.popover.hover-popover .markdown-embed-link,
+.popover.hover-popover .file-embed-link {
+    right: 8px;
+    top: 8px;
+}
+
+.popover.hover-popover .markdown-embed,
+.popover.hover-popover .file-embed {
+    border-left: none;
+    padding: 0;
+    margin: 0;
+    max-height: 450px;
+}
+
+.popover.hover-popover .markdown-preview-view {
+    padding: 0;
+}
+
+.popover.hover-popover .markdown-preview-view h1,
+.popover.hover-popover .markdown-preview-view h2,
+.popover.hover-popover .markdown-preview-view h3,
+.popover.hover-popover .markdown-preview-view h4,
+.popover.hover-popover .markdown-preview-view h5,
+.popover.hover-popover .markdown-preview-view h6 {
+    margin: 10px 0 5px;
+}
+
+.popover.hover-popover .markdown-preview-view pre {
+    max-height: 200px;
+    overflow: auto;
+}
+
+.popover.hover-popover *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.popover.hover-popover *::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-bg);
+    border-radius: 4px;
+}
+
+.popover.hover-popover *::-webkit-scrollbar-track {
+    background-color: var(--scrollbar-bg);
+    border-radius: 4px;
+}
+
+/* 额外添加 HoverParent 支持 */
+.chat-view-hover-parent {
+    position: relative;
+}
