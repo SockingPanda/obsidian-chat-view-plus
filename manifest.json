@@ -1,7 +1,7 @@
 {
 	"id": "chat-view-plus",
 	"name": "Chat View Plus",
-	"version": "1.1.4",
+	"version": "1.1.5",
 	"minAppVersion": "1.8.9",
 	"description": "Chat view enhancement for Obsidian. Create a chat-like interface for recording and displaying conversations.",
 	"author": "SockingPanda",

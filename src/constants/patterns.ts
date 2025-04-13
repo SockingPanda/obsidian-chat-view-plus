@@ -6,7 +6,8 @@
 // 配置相关正则
 export const FORMAT_CONFIG_REGEX = /^{(.+?)}$/;
 export const COLOR_CONFIG_REGEX = /^\[([^[\]]+?=[^[\]]+?(?:,[^[\]]+?=[^[\]]+?)*)]\s*$/;
-export const TITLE_CONFIG_REGEX = /{title=([^}]+)}/;
+export const TITLE_CONFIG_REGEX = /title=([^,}]+)/;
+export const FOLDABLE_CONFIG_REGEX = /foldable=(true|false)/i;
 
 // 消息相关正则
 export const MESSAGE_DIR_REGEX = /^@(left|right|center)\s+(.*)$/i;

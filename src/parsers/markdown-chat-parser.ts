@@ -1,4 +1,4 @@
-import { Component, MarkdownRenderer } from "obsidian";
+import { Component, MarkdownRenderer, setIcon } from "obsidian";
 import { ChatBubbleOptions } from "../models/message";
 import { ConfigParser } from "./config-parser";
 import { 
@@ -9,6 +9,7 @@ import {
     TIME_COMMENT_REGEX,
     TIME_CLEANUP_REGEX,
     TITLE_CONFIG_REGEX,
+    FOLDABLE_CONFIG_REGEX,
     parseHeaderAndTime
 } from "../constants";
 
@@ -44,6 +45,12 @@ export class MarkdownChatParser {
         renderCallback: (element: HTMLElement, options: ChatBubbleOptions) => void,
         component: Component
     ): void {
+        // 创建一个包含整个聊天内容的容器
+        const chatContainer = element.createDiv({
+            cls: ["chat-view-container"]
+        });
+        
+        // 提取标题，先解析配置
         const lines = source.split("\n");
         const formats = new Map<string, string>();
         const colors = new Map<string, string>();
@@ -58,6 +65,86 @@ export class MarkdownChatParser {
                 const lineColors = ConfigParser.parseColorConfigs(trimmedLine);
                 lineColors.forEach((v, k) => colors.set(k, v));
             }
+        }
+        
+        // 提取标题和是否可折叠的配置
+        let chatTitle = "聊天";
+        let isFoldable = true; // 默认可折叠
+        
+        for (const line of lines) {
+            const trimmedLine = line.trim();
+            
+            // 检查格式配置行，查找标题和foldable配置
+            if (FORMAT_CONFIG_REGEX.test(trimmedLine)) {
+                const configContent = trimmedLine.replace(/^{|}$/g, "").trim();
+                
+                // 查找标题配置
+                const titleMatch = configContent.match(TITLE_CONFIG_REGEX);
+                if (titleMatch) {
+                    chatTitle = titleMatch[1].trim();
+                }
+                
+                // 查找可折叠配置
+                const foldableMatch = configContent.match(FOLDABLE_CONFIG_REGEX);
+                if (foldableMatch) {
+                    isFoldable = foldableMatch[1].toLowerCase() === "true";
+                }
+            }
+        }
+        
+        // 只有在配置为可折叠时才添加折叠按钮
+        if (isFoldable) {
+            // 添加折叠/展开按钮到聊天顶部
+            const toggleButton = chatContainer.createDiv({
+                cls: ["chat-view-toggle-button"]
+            });
+            
+            // 添加展开/折叠图标
+            const toggleIcon = toggleButton.createDiv({
+                cls: ["chat-view-toggle-icon"]
+            });
+            
+            // 在切换按钮中添加标题
+            toggleButton.appendChild(document.createTextNode(` ${chatTitle}`));
+            
+            // 设置点击事件处理
+            toggleButton.addEventListener("click", (e) => {
+                // 阻止事件冒泡，避免触发代码块的其他操作
+                e.stopPropagation();
+                
+                chatContainer.classList.toggle("chat-view-collapsed");
+                // 更新图标，在展开和收起之间切换
+                if (chatContainer.classList.contains("chat-view-collapsed")) {
+                    toggleIcon.empty();
+                    setIcon(toggleIcon, "chevron-right");
+                } else {
+                    toggleIcon.empty();
+                    setIcon(toggleIcon, "chevron-down");
+                }
+            });
+            
+            // 初始状态设置为展开
+            toggleIcon.empty();
+            setIcon(toggleIcon, "chevron-down");
+        } else {
+            // 如果不可折叠，添加一个简单的标题栏
+            const titleBar = chatContainer.createDiv({
+                cls: ["chat-view-title-bar"]
+            });
+            titleBar.createSpan({
+                text: chatTitle,
+                cls: ["chat-view-title-text"]
+            });
+        }
+        
+        // 创建聊天内容容器，将所有聊天内容放在这个容器里
+        const contentContainer = chatContainer.createDiv({
+            cls: ["chat-view-content-container"]
+        });
+        
+        // 如果设置为不可折叠，确保内容始终显示
+        if (!isFoldable) {
+            chatContainer.classList.add("chat-view-non-foldable");
         }
         
         // 第二步：处理消息和注释
@@ -81,7 +168,7 @@ export class MarkdownChatParser {
                 // 如果有积累的注释，先渲染注释
                 if (commentContent.trim()) {
                     // 创建markdown渲染容器
-                    const commentEl = element.createDiv({
+                    const commentEl = contentContainer.createDiv({
                         cls: ["chat-view-comment", "markdown-rendered"]
                     });
                     
@@ -136,7 +223,7 @@ export class MarkdownChatParser {
                 };
                 
                 
-                renderCallback(element, options);
+                renderCallback(contentContainer, options);
                 
                 // 重置状态
                 inMessage = false;
@@ -163,7 +250,7 @@ export class MarkdownChatParser {
                     // 如果有积累的普通注释，先渲染
                     if (commentContent.trim()) {
                         // 创建markdown渲染容器
-                        const commentEl = element.createDiv({
+                        const commentEl = contentContainer.createDiv({
                             cls: ["chat-view-comment", "markdown-rendered"]
                         });
                         
@@ -187,7 +274,7 @@ export class MarkdownChatParser {
                     const commentText = timeCommentMatch[2];
                     
                     // 创建带时间的注释容器
-                    const timeCommentContainer = element.createDiv({
+                    const timeCommentContainer = contentContainer.createDiv({
                         cls: ["chat-view-time-comment-container"]
                     });
                     
@@ -242,11 +329,11 @@ export class MarkdownChatParser {
                 component: component
             };
             
-            renderCallback(element, options);
+            renderCallback(contentContainer, options);
         } else if (commentContent.trim()) {
             // 还有未渲染的注释
             // 创建markdown渲染容器
-            const commentEl = element.createDiv({
+            const commentEl = contentContainer.createDiv({
                 cls: ["chat-view-comment", "markdown-rendered"]
             });
             

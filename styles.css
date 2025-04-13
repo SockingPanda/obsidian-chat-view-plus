@@ -1689,3 +1689,95 @@ option.chat-view-temporary-role {
 .chat-view-hover-parent {
     position: relative;
 }
+
+/* 聊天折叠/展开功能样式 */
+.chat-view-container {
+    position: relative;
+    margin: 10px 0;
+    border-radius: 8px;
+    border: 1px solid var(--background-modifier-border);
+    overflow: hidden;
+    background-color: var(--background-primary);
+}
+
+.chat-view-toggle-button {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 6px 12px;
+    background-color: var(--background-secondary);
+    border-bottom: 1px solid var(--background-modifier-border);
+    cursor: pointer;
+    font-weight: 500;
+    z-index: 0; /* 降低z-index，确保不会遮挡Obsidian的编辑按钮 */
+    color: var(--text-normal);
+    font-size: 0.95em;
+    user-select: none;
+}
+
+.chat-view-title-bar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 6px 12px;
+    background-color: var(--background-secondary);
+    border-bottom: 1px solid var(--background-modifier-border);
+    font-weight: 500;
+    z-index: 0;
+    color: var(--text-normal);
+    font-size: 0.95em;
+    user-select: none;
+}
+
+.chat-view-title-text {
+    font-weight: 500;
+}
+
+.chat-view-toggle-button:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.chat-view-toggle-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 8px;
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+}
+
+.chat-view-collapsed .chat-view-toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.chat-view-content-container {
+    padding: 15px;
+    height: auto;
+    opacity: 1;
+    overflow: visible;
+    transition: opacity 0.25s ease-in-out, padding 0.25s ease-in-out;
+}
+
+/* 不可折叠的聊天容器内容样式 */
+.chat-view-non-foldable .chat-view-content-container {
+    height: auto !important;
+    opacity: 1 !important;
+    overflow: visible !important;
+    padding: 15px !important;
+}
+
+.chat-view-collapsed .chat-view-content-container {
+    height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: height 0.25s ease-in-out, opacity 0.25s ease-in-out, padding 0.25s ease-in-out;
+}
+
+/* 确保折叠后内部内容不可见 */
+.chat-view-collapsed .chat-view-bubble,
+.chat-view-collapsed .chat-view-comment,
+.chat-view-collapsed .chat-view-time-comment-container {
+    display: none;
+}
