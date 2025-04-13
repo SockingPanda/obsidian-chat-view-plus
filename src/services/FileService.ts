@@ -354,15 +354,22 @@ export class FileService {
             // 获取文件内容
             let content = await this.app.vault.read(file);
             
+            // 检测消息内容是否包含代码块标记，需要决定使用哪种级别的标记
+            const containsCodeBlock = message.includes("```");
+            // 确定代码块边界分隔符，如果包含代码块则使用四个反引号，否则使用三个
+            const blockMarker = containsCodeBlock ? "````" : "```";
+            
             // 提取所有聊天块
-            const chatBlocks: {start: number, end: number, content: string}[] = [];
-            const chatBlockRegex = /```chat(?:-md)?\n([\s\S]*?)```/g;
+            const chatBlocks: {start: number, end: number, content: string, type: string}[] = [];
+            // 这里的正则表达式需要同时匹配三个反引号和四个反引号的情况
+            const chatBlockRegex = /(?:```|````)\s*(chat(?:-md)?)\n([\s\S]*?)(?:```|````)/g;
             let match;
             while ((match = chatBlockRegex.exec(content)) !== null) {
                 chatBlocks.push({
                     start: match.index,
                     end: match.index + match[0].length,
-                    content: match[1]
+                    content: match[2],
+                    type: match[1]
                 });
             }
             
@@ -378,30 +385,37 @@ export class FileService {
                 // 准备消息内容
                 const messageTemplate = `@${position} ${roleName} [${messageTime}]\n${message}\n___\n\n`;
                 
+                // 获取当前块的内容以检查它是否包含代码块
+                const currentBlockContent = content.substring(targetBlock.start, targetBlock.end);
+                // 检查现有块内容是否包含代码块
+                const existingBlockContainsCode = currentBlockContent.includes("```");
+                
+                // 重新确定标记，如果现有内容或新消息包含代码块，都需要升级
+                const updatedBlockMarker = (existingBlockContainsCode || containsCodeBlock) ? "````" : "```";
+                
                 // 更新单个聊天块
                 const beforeChat = content.substring(0, targetBlock.start);
-                const chatContent = content.substring(targetBlock.start, targetBlock.end);
                 const afterChat = content.substring(targetBlock.end);
                 
-                // 找到代码块的结束标记
-                const blockClosingIndex = chatContent.lastIndexOf("```");
-                if (blockClosingIndex > 0) {
-                    // 插入消息到代码块结束之前
-                    const newChatContent = 
-                        chatContent.substring(0, blockClosingIndex) + 
-                        messageTemplate + 
-                        "```";
-                    
-                    // 组合新内容
-                    content = beforeChat + newChatContent + afterChat;
-                }
+                // 提取当前代码块内容但不包括开始和结束标记
+                const matchResult = currentBlockContent.match(/(?:```|````)\s*(chat(?:-md)?)\n([\s\S]*?)(?:```|````)/);
+                const chatContentWithoutMarkers = matchResult ? matchResult[2] : "";
+                
+                // 保持原始代码块类型
+                const blockType = targetBlock.type;
+                
+                // 创建新的代码块内容
+                const newChatContent = `${updatedBlockMarker}${blockType}\n${chatContentWithoutMarkers}${messageTemplate}${updatedBlockMarker}`;
+                
+                // 组合新内容
+                content = beforeChat + newChatContent + afterChat;
             } else {
                 // 需要创建新聊天块
                 if (content && !content.endsWith("\n\n")) {
                     content += "\n\n";
                 }
                 
-                content += "```chat\n";
+                content += `${blockMarker}chat\n`;
                 
                 // 添加角色颜色配置
                 const colorConfigs = this.plugin.settings.roles
@@ -413,7 +427,7 @@ export class FileService {
                 // 添加消息
                 const messageTemplate = `@${position} ${roleName} [${messageTime}]\n${message}\n___\n\n`;
                 
-                content += messageTemplate + "```";
+                content += messageTemplate + blockMarker;
                 
                 // 标记已创建新聊天块
                 createdNewChatBlock = true;
@@ -445,11 +459,36 @@ export class FileService {
     async getChatBlocksCount(file: TFile): Promise<number> {
         try {
             const content = await this.app.vault.read(file);
-            const chatBlockRegex = /```chat(?:-md)?\n([\s\S]*?)```/g;
+            
+            // 使用新方法计算聊天块数量，确保正确匹配开头和结尾标记
+            const lines = content.split('\n');
+            let inChatBlock = false;
+            let blockStartLine = '';
             let count = 0;
-            while (chatBlockRegex.exec(content) !== null) {
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                // 检查聊天块开始
+                if (!inChatBlock) {
+                    // 匹配可能的聊天块开始：```chat 或 ````chat 等
+                    const startMatch = line.match(/^(`{3,})(chat(?:-md)?)\s*$/);
+                    if (startMatch) {
+                        inChatBlock = true;
+                        blockStartLine = startMatch[1]; // 保存开始标记的反引号
+                    }
+                } else if (line === blockStartLine) {
+                    // 找到匹配的结束标记
+                    inChatBlock = false;
+                    count++;
+                }
+            }
+            
+            // 如果文件结束时仍在聊天块内，也计为一个块
+            if (inChatBlock) {
                 count++;
             }
+            
             return count;
         } catch (error) {
             console.error("获取聊天块数量失败:", error);
@@ -471,6 +510,7 @@ export class FileService {
                 content += "\n\n";
             }
             
+            // 使用默认三个反引号的格式，因为新建的聊天块不会包含代码块
             content += "```chat\n";
             
             // 添加角色颜色配置

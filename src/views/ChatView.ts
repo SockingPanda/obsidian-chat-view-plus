@@ -339,41 +339,93 @@ export class ChatView extends ItemView {
             
             // 提取所有聊天块及其标题
             const chatBlocks: {index: number, title: string}[] = [];
-            const chatBlockRegex = /```chat(?:-md)?\n([\s\S]*?)```/g;
-            let match;
-            let index = 0;
             
-            while ((match = chatBlockRegex.exec(content)) !== null) {
-                // 获取聊天块的内容
-                const blockContent = match[1];
+            // 使用新方法查找聊天块，确保开头和结尾反引号数量匹配
+            const lines = content.split('\n');
+            let inChatBlock = false;
+            let blockStartLine = '';
+            let blockContent = '';
+            let blockIndex = 0;
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
                 
-                // 尝试按照以下优先级提取聊天块标题：
-                // 1. 首先查找自定义标题属性 {title=xxx}
-                // 2. 如果没有自定义标题，则使用第一条消息的发送者名称
-                // 3. 如果都没有，则使用默认标题 "聊天 x"
-                let blockTitle = `聊天 ${index + 1}`;
+                // 检查聊天块开始
+                if (!inChatBlock) {
+                    // 匹配可能的聊天块开始：```chat 或 ````chat 等
+                    const startMatch = line.match(/^(`{3,})(chat(?:-md)?)\s*$/);
+                    if (startMatch) {
+                        inChatBlock = true;
+                        blockStartLine = startMatch[1]; // 保存开始标记的反引号
+                        blockContent = '';
+                    }
+                } else {
+                    // 检查聊天块结束
+                    if (line === blockStartLine) {
+                        // 找到匹配的结束标记，处理这个块
+                        inChatBlock = false;
+                        
+                        // 尝试按照以下优先级提取聊天块标题：
+                        // 1. 首先查找自定义标题属性 {title=xxx}
+                        // 2. 如果没有自定义标题，则使用第一条消息的发送者名称
+                        // 3. 如果都没有，则使用默认标题 "聊天 x"
+                        let blockTitle = `聊天 ${blockIndex + 1}`;
+                        
+                        // 查找自定义标题
+                        const titleMatch = blockContent.match(TITLE_CONFIG_REGEX);
+                        if (titleMatch && titleMatch[1]) {
+                            blockTitle = `${blockIndex + 1}. ${titleMatch[1].trim()}`;
+                        } else {
+                            // 查找第一条消息的发送者
+                            const firstMessageMatch = blockContent.match(MESSAGE_DIR_REGEX);
+                            if (firstMessageMatch && firstMessageMatch[2]) {
+                                const { header } = parseHeaderAndTime(firstMessageMatch[2].trim());
+                                if (header) {
+                                    blockTitle = `${blockIndex + 1}. ${header}`;
+                                }
+                            }
+                        }
+                        
+                        chatBlocks.push({
+                            index: blockIndex,
+                            title: blockTitle
+                        });
+                        
+                        blockIndex++;
+                    } else {
+                        // 积累内容
+                        if (blockContent.length > 0) {
+                            blockContent += '\n';
+                        }
+                        blockContent += lines[i]; // 保留原始行，包括空格
+                    }
+                }
+            }
+            
+            // 处理文件结束但聊天块未关闭的情况
+            if (inChatBlock && blockContent.length > 0) {
+                // 为未关闭的块添加标题
+                let blockTitle = `聊天 ${blockIndex + 1}`;
                 
                 // 查找自定义标题
                 const titleMatch = blockContent.match(TITLE_CONFIG_REGEX);
                 if (titleMatch && titleMatch[1]) {
-                    blockTitle = `${index + 1}. ${titleMatch[1].trim()}`;
+                    blockTitle = `${blockIndex + 1}. ${titleMatch[1].trim()}`;
                 } else {
                     // 查找第一条消息的发送者
                     const firstMessageMatch = blockContent.match(MESSAGE_DIR_REGEX);
                     if (firstMessageMatch && firstMessageMatch[2]) {
                         const { header } = parseHeaderAndTime(firstMessageMatch[2].trim());
                         if (header) {
-                            blockTitle = `${index + 1}. ${header}`;
+                            blockTitle = `${blockIndex + 1}. ${header}`;
                         }
                     }
                 }
                 
                 chatBlocks.push({
-                    index: index,
+                    index: blockIndex,
                     title: blockTitle
                 });
-                
-                index++;
             }
             
             // 更新下拉列表
@@ -1632,15 +1684,62 @@ export class ChatView extends ItemView {
         this.chatContainer.empty();
         
         // 提取聊天块内容
-        const chatBlockRegex = /```chat(?:-md)?\n([\s\S]*?)```/g;
+        // 改进正则表达式，确保捕获开始和结束标记，以便匹配相同数量的反引号
         const matches = [];
-        let match;
         
-        while ((match = chatBlockRegex.exec(content)) !== null) {
+        // 使用新方法查找聊天块，确保开头和结尾反引号数量匹配
+        const lines = content.split('\n');
+        let inChatBlock = false;
+        let blockStartIndex = 0;
+        let blockStartLine = '';
+        let blockContent = '';
+        let blockType = '';
+        let currentLineIndex = 0;
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            currentLineIndex = i;
+            
+            // 检查聊天块开始
+            if (!inChatBlock) {
+                // 匹配可能的聊天块开始：```chat 或 ````chat 等
+                const startMatch = line.match(/^(`{3,})(chat(?:-md)?)\s*$/);
+                if (startMatch) {
+                    inChatBlock = true;
+                    blockStartIndex = i;
+                    blockStartLine = startMatch[1]; // 保存开始标记的反引号
+                    blockType = startMatch[2].trim(); // 保存类型 (chat 或 chat-md)
+                    blockContent = '';
+                }
+            } else {
+                // 检查聊天块结束
+                if (line === blockStartLine) {
+                    // 找到匹配的结束标记
+                    inChatBlock = false;
+                    matches.push({
+                        content: blockContent,
+                        type: blockType,
+                        start: blockStartIndex,
+                        end: i
+                    });
+                } else {
+                    // 积累内容
+                    if (blockContent.length > 0) {
+                        blockContent += '\n';
+                    }
+                    blockContent += lines[i]; // 保留原始行，包括空格
+                }
+            }
+        }
+        
+        // 处理文件结束但聊天块未关闭的情况
+        if (inChatBlock) {
+            // 为未关闭的块添加一个隐式的结束标记
             matches.push({
-                content: match[1],
-                start: match.index,
-                end: match.index + match[0].length
+                content: blockContent,
+                type: blockType,
+                start: blockStartIndex,
+                end: currentLineIndex
             });
         }
         
@@ -1714,83 +1813,134 @@ export class ChatView extends ItemView {
         const formatConfigs = new Map<string, string>();
         formatConfigs.set("linkEmbeds", "true"); // 启用链接和嵌入处理
         
-        // 创建消息块
-        let inMessage = false;
-        let direction = "";
-        let sender = "";
-        let time = "";
-        let messageContent = "";
-         
+        // 解析消息块
+        // 使用状态机方式解析消息，更健壮地处理嵌套结构
+        let state = 'SEARCHING'; // 可能的状态: SEARCHING, IN_MESSAGE, IN_CODE_BLOCK
+        let messageData: { 
+            sender: string; 
+            time: string; 
+            direction: string; 
+            content: string[];
+            codeBlockDepth: number;
+            codeBlockDelimiter: string;
+        } | null = null;
+        
+        // 逐行处理内容
         for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-             
+            const line = lines[i];
+            const trimmedLine = line.trim();
+            
             // 跳过空行和配置行
-            if (!line || line.match(colorConfigRegex)) continue;
-             
-            // 消息开始
-            const dirMatch = line.match(MESSAGE_DIR_REGEX);
-            if (dirMatch && !inMessage) {
-                inMessage = true;
-                direction = dirMatch[1].toLowerCase();
-                
-                // 使用parseHeaderAndTime函数解析头部和时间
-                const { header, time: parsedTime } = parseHeaderAndTime(dirMatch[2].trim());
-                sender = header;
-                time = parsedTime;
-                
-                messageContent = "";
-                continue;
-            }
-             
-            // 消息结束
-            if (MESSAGE_END_REGEX.test(line) && inMessage) {
-                // 渲染消息
-                const options: ChatBubbleOptions = {
-                    header: sender,
-                    prevHeader: "",
-                    message: messageContent,
-                    subtext: time,
-                    align: direction,
-                    continued: false,
-                    colorConfigs: colorConfigs,
-                    formatConfigs: formatConfigs,
-                    sourcePath: this.targetFile?.path || "",
-                    component: this.plugin
-                };
-                 
-                // 渲染消息
-                ChatBubbleRenderer.render(element, options);
-                 
-                // 重置
-                inMessage = false;
-                continue;
-            }
-             
-            // 消息内容
-            if (inMessage) {
-                if (messageContent) {
-                    messageContent += "\n" + lines[i];
-                } else {
-                    messageContent = lines[i];
+            if (!trimmedLine || trimmedLine.match(colorConfigRegex)) {
+                if (state === 'IN_MESSAGE') {
+                    // 在消息内保留空行
+                    messageData?.content.push(line);
                 }
+                continue;
+            }
+            
+            // 根据当前状态处理行
+            switch (state) {
+                case 'SEARCHING':
+                    // 查找消息开始标记
+                    const dirMatch = trimmedLine.match(MESSAGE_DIR_REGEX);
+                    if (dirMatch) {
+                        state = 'IN_MESSAGE';
+                        const { header, time } = parseHeaderAndTime(dirMatch[2].trim());
+                        messageData = {
+                            sender: header,
+                            time: time,
+                            direction: dirMatch[1].toLowerCase(),
+                            content: [],
+                            codeBlockDepth: 0,
+                            codeBlockDelimiter: ''
+                        };
+                    }
+                    break;
+                    
+                case 'IN_MESSAGE':
+                    // 确保messageData存在
+                    if (!messageData) {
+                        state = 'SEARCHING';
+                        continue;
+                    }
+                    
+                    // 检查代码块边界
+                    if (trimmedLine.startsWith('```')) {
+                        // 计算反引号数量
+                        let backtickCount = 0;
+                        for (let j = 0; j < trimmedLine.length; j++) {
+                            if (trimmedLine[j] === '`') {
+                                backtickCount++;
+                            } else {
+                                break;
+                            }
+                        }
+                        
+                        // 检查是否是开始或结束
+                        if (messageData.codeBlockDepth === 0) {
+                            // 进入代码块
+                            messageData.codeBlockDepth = backtickCount;
+                            messageData.codeBlockDelimiter = '`'.repeat(backtickCount);
+                            messageData.content.push(line); // 保留代码块标记行
+                        } else if (backtickCount === messageData.codeBlockDepth && trimmedLine === messageData.codeBlockDelimiter) {
+                            // 离开代码块
+                            messageData.content.push(line); // 保留代码块结束标记
+                            messageData.codeBlockDepth = 0;
+                            messageData.codeBlockDelimiter = '';
+                        } else {
+                            // 这只是代码块内的一行，或者是不同级别的代码块
+                            messageData.content.push(line);
+                        }
+                        continue;
+                    }
+                    
+                    // 检查是否为消息结束标记 (只在不在代码块内部时处理)
+                    if (messageData.codeBlockDepth === 0 && MESSAGE_END_REGEX.test(trimmedLine)) {
+                        // 渲染消息
+                        const options: ChatBubbleOptions = {
+                            header: messageData.sender,
+                            prevHeader: "",
+                            message: messageData.content.join('\n'),
+                            subtext: messageData.time,
+                            align: messageData.direction,
+                            continued: false,
+                            colorConfigs: colorConfigs,
+                            formatConfigs: formatConfigs,
+                            sourcePath: this.targetFile?.path || "",
+                            component: this.plugin
+                        };
+                        
+                        // 渲染消息
+                        ChatBubbleRenderer.render(element, options);
+                        
+                        // 重置状态
+                        state = 'SEARCHING';
+                        messageData = null;
+                    } else {
+                        // 正常消息内容
+                        messageData.content.push(line);
+                    }
+                    break;
             }
         }
-         
-        // 如果有未结束的消息，渲染它
-        if (inMessage) {
+        
+        // 处理最后一个未完成的消息
+        if (state === 'IN_MESSAGE' && messageData) {
+            // 渲染最后一个消息
             const options: ChatBubbleOptions = {
-                header: sender,
+                header: messageData.sender,
                 prevHeader: "",
-                message: messageContent,
-                subtext: time,
-                align: direction,
+                message: messageData.content.join('\n'),
+                subtext: messageData.time,
+                align: messageData.direction,
                 continued: false,
                 colorConfigs: colorConfigs,
                 formatConfigs: formatConfigs,
                 sourcePath: this.targetFile?.path || "",
                 component: this.plugin
             };
-             
+            
             ChatBubbleRenderer.render(element, options);
         }
     }
